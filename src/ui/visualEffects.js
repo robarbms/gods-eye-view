@@ -1,4 +1,4 @@
-import { PostProcessStage } from 'cesium';
+import { PostProcessStage, Color } from 'cesium';
 import {
   bloomStrengthFromIntensity,
   clampBloomIntensity,
@@ -7,8 +7,21 @@ import {
 import {
   STYLES,
   SHARPEN_SHADER,
+  MAP_TINT_SHADER,
+  MAP_TINT_COLOR_DEFAULT,
+  MAP_TINT_STRENGTH_DEFAULT,
   TRANSITION_DURATION_MS,
 } from './visualPresets.js';
+
+/** Resolve a CSS colour string or Cesium Color into a Color, falling back when invalid. */
+function resolveTintColor(value, fallback) {
+  if (typeof value === 'string') {
+    const parsed = Color.fromCssColorString(value);
+    return parsed && Number.isFinite(parsed.red) ? parsed : fallback;
+  }
+  if (value && typeof value.red === 'number') return value;
+  return fallback;
+}
 
 /** Own the post-process stages and their animation, without DOM dependencies. */
 export class VisualEffects {
@@ -45,6 +58,13 @@ export class VisualEffects {
     this.sharpenIntensity = 0.49;
     this.bloomStage = null;
     this.sharpenStage = null;
+    this.mapTintEnabled = false;
+    this.mapTintStrength = MAP_TINT_STRENGTH_DEFAULT / 100;
+    this.mapTintColor = resolveTintColor(
+      MAP_TINT_COLOR_DEFAULT,
+      Color.fromBytes(74, 144, 217),
+    );
+    this.mapTintStage = null;
     this.frameId = null;
     this.stopped = false;
     this.destroyed = false;
@@ -106,6 +126,17 @@ export class VisualEffects {
     this.sharpenStage.enabled = false;
     this.viewer.scene.postProcessStages.add(this.sharpenStage);
     this.applySharpenIntensity(sharpenIntensity);
+    this.mapTintStage = this.createStage({
+      name: 'godsEyeView_mapTint',
+      fragmentShader: MAP_TINT_SHADER,
+      uniforms: {
+        tintColor: this.mapTintColor,
+        strength: this.mapTintStrength,
+      },
+    });
+    this.mapTintStage.enabled = false;
+    this.viewer.scene.postProcessStages.add(this.mapTintStage);
+    this.syncMapTint();
   }
 
   setStageIntensity(stage, value) {
@@ -165,6 +196,37 @@ export class VisualEffects {
     this.sharpenEnabled = !!enabled;
     if (this.sharpenStage) this.sharpenStage.enabled = this.sharpenEnabled;
     this.requestRender('sharpen');
+  }
+
+  /** Enable the tint stage only while it is toggled on and has a visible strength. */
+  syncMapTint() {
+    if (this.stopped || !this.mapTintStage) return;
+    this.mapTintStage.enabled =
+      this.mapTintEnabled && this.mapTintStrength > 0.001;
+  }
+
+  setMapTintEnabled(enabled) {
+    if (this.stopped) return;
+    this.mapTintEnabled = !!enabled;
+    this.syncMapTint();
+    this.requestRender('map-tint');
+  }
+
+  applyMapTintColor(color) {
+    if (this.stopped) return;
+    this.mapTintColor = resolveTintColor(color, this.mapTintColor);
+    if (this.mapTintStage)
+      this.mapTintStage.uniforms.tintColor = this.mapTintColor;
+    this.requestRender('map-tint');
+  }
+
+  applyMapTintStrength(value) {
+    if (this.stopped) return;
+    this.mapTintStrength = Math.max(0, Math.min(1, value || 0));
+    if (this.mapTintStage)
+      this.mapTintStage.uniforms.strength = this.mapTintStrength;
+    this.syncMapTint();
+    this.requestRender('map-tint');
   }
 
   startTransition(styleName, from, to) {
@@ -227,6 +289,7 @@ export class VisualEffects {
     const stages = this.viewer.scene.postProcessStages;
     for (const [, stage] of this.stageEntries) stages.remove(stage);
     if (this.sharpenStage) stages.remove(this.sharpenStage);
+    if (this.mapTintStage) stages.remove(this.mapTintStage);
     if (this.bloomStage && this.previousBloom) {
       Object.assign(this.bloomStage.uniforms, this.previousBloom.uniforms);
       this.bloomStage.enabled = this.previousBloom.enabled;

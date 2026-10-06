@@ -541,6 +541,10 @@ export class ShellFacade {
     return this._visualSettings.sharpenEnabled;
   }
 
+  get mapTintEnabled() {
+    return this._visualSettings.mapTintEnabled;
+  }
+
   get _bloomStage() {
     return this._visualEffects.bloomStage;
   }
@@ -723,6 +727,33 @@ export class ShellFacade {
    */
   _setSharpenEnabled(enabled) {
     return this._visualSettings._setSharpenEnabled(...arguments);
+  }
+
+  /**
+   * Toggles the map colour tint on/off and reveals/hides its strength slider.
+   * @param {boolean} enabled - Whether the tint should be active.
+   * @returns {void}
+   */
+  _setMapTintEnabled(enabled) {
+    return this._visualSettings._setMapTintEnabled(...arguments);
+  }
+
+  /**
+   * Sets the map tint colour from a CSS colour string and syncs the picker.
+   * @param {string} color - CSS colour (e.g. '#4a90d9').
+   * @returns {void}
+   */
+  _setMapTintColor(color) {
+    return this._visualSettings._setMapTintColor(...arguments);
+  }
+
+  /**
+   * Sets the map tint strength from a 0-100 percentage and syncs the slider.
+   * @param {number} pct - Tint strength percentage.
+   * @returns {void}
+   */
+  _setMapTintStrength(pct) {
+    return this._visualSettings._setMapTintStrength(...arguments);
   }
 
   /**

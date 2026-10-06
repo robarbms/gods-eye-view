@@ -256,6 +256,10 @@ export class VisualSettings {
     return this._visualEffects.sharpenEnabled;
   }
 
+  get mapTintEnabled() {
+    return this._visualEffects.mapTintEnabled;
+  }
+
   _initStages() {
     this._visualEffects.initStyles();
   }
@@ -506,6 +510,37 @@ export class VisualSettings {
     }
     this._syncShareState();
     this._layoutRightPanels();
+  }
+
+  _setMapTintEnabled(enabled) {
+    const { governorRequestRender } = this.services;
+    governorRequestRender('map-tint');
+    this._visualEffects.setMapTintEnabled(enabled);
+    if (this._mapTintBtn) {
+      this._mapTintBtn.classList.toggle('active', this.mapTintEnabled);
+      this._mapTintBtn.setAttribute(
+        'aria-pressed',
+        String(this.mapTintEnabled),
+      );
+    }
+    if (this._mapTintSliderRow) {
+      this._mapTintSliderRow.classList.toggle('visible', this.mapTintEnabled);
+    }
+    this._layoutRightPanels();
+  }
+
+  _setMapTintColor(color) {
+    this._visualEffects.applyMapTintColor(color);
+    if (this._mapTintColorInput && typeof color === 'string')
+      this._mapTintColorInput.value = color;
+  }
+
+  _setMapTintStrength(pct) {
+    const clamped = Math.max(0, Math.min(100, pct || 0));
+    if (this._mapTintSlider) this._mapTintSlider.value = String(clamped);
+    if (this._mapTintSliderValue)
+      this._mapTintSliderValue.textContent = `${clamped}%`;
+    this._visualEffects.applyMapTintStrength(clamped / 100);
   }
 
   _applyDetectionDensityFromUi() {

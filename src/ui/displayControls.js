@@ -24,14 +24,17 @@ export function bindDisplayControls({ elements, actions }) {
     ['sonarButton', 'toggleSonar'],
     ['detectionButton', 'cycleDetection'],
     ['modelsButton', 'toggleModels'],
+    ['mapTintButton', 'toggleMapTint'],
   ])
     listen(elements[name], 'click', action);
   for (const [name, action] of [
     ['bloomSlider', 'setBloomIntensity'],
     ['sharpenSlider', 'setSharpenIntensity'],
     ['scopeFeatherSlider', 'setScopeFeather'],
+    ['mapTintSlider', 'setMapTintStrength'],
   ])
     listen(elements[name], 'input', action, integer);
+  listen(elements.mapTintColor, 'input', 'setMapTintColor', (el) => el.value);
   listen(elements.densitySlider, 'input', 'setDensity', (el) => el.value);
   listen(elements.hudLayout, 'change', 'setHudLayout', (el) => el.value);
   for (const [name, action] of [

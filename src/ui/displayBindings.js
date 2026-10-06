@@ -33,6 +33,9 @@ export class DisplayBindings {
   get sharpenEnabled() {
     return this.readState().sharpenEnabled;
   }
+  get mapTintEnabled() {
+    return this.readState().mapTintEnabled;
+  }
   get celestialRing() {
     return this.readState().celestialRing;
   }
@@ -101,6 +104,9 @@ export class DisplayBindings {
         bloomSlider: this._bloomSlider,
         sharpenButton: this._sharpenBtn,
         sharpenSlider: this._sharpenSlider,
+        mapTintButton: this._mapTintBtn,
+        mapTintColor: this._mapTintColorInput,
+        mapTintSlider: this._mapTintSlider,
         scopeButton: this._scopeBtn,
         scopeFeatherSlider: this._scopeFeatherSlider,
         hudLayout: this._hudLayoutSelect,
@@ -219,6 +225,18 @@ export class DisplayBindings {
         },
         setModelsMode: (mode) => this._setModels3dMode(mode),
         setOsmStyle: (style) => this._setOsmStyle(style),
+        toggleMapTint: () => {
+          this.shareLinkManager?.claimRestoreLane?.('visual');
+          this._setMapTintEnabled(!this.mapTintEnabled);
+        },
+        setMapTintColor: (value) => {
+          this.shareLinkManager?.claimRestoreLane?.('visual');
+          this._setMapTintColor(value);
+        },
+        setMapTintStrength: (value) => {
+          this.shareLinkManager?.claimRestoreLane?.('visual');
+          this._setMapTintStrength(value);
+        },
       },
     });
   }

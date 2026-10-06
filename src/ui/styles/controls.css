@@ -1003,6 +1003,36 @@ body.gev-drawing #cesiumContainer canvas {
   outline-offset: -3px;
 }
 
+/* Map tint colour picker (Display panel) */
+.map-tint-color-row {
+  align-items: center;
+}
+.pp-color-input {
+  width: 34px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.pp-color-input::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+.pp-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+.pp-color-input::-moz-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+.pp-color-input:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: -3px;
+}
+
 /* These controls also move into Cockpit Display; keep focus on the control
    itself and inside clipped button groups, independent of selection color. */
 .pp-toggle-btn:focus-visible,

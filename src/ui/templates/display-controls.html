@@ -196,6 +196,21 @@
         <span class="pp-slider-value" id="sharpen-intensity-value">49%</span>
       </div>
     </div>
+    <div class="pp-toggle-group">
+      <button class="pp-toggle-btn" id="map-tint-toggle" title="Tint the map with a colour" aria-pressed="false">
+        <span class="pp-icon material-symbols-outlined" aria-hidden="true">palette</span>
+        <span class="pp-label">Tint</span>
+      </button>
+      <div class="pp-slider-row visible map-tint-color-row">
+        <label class="pp-slider-mini-label" for="map-tint-color">Colour</label>
+        <input type="color" class="pp-color-input" id="map-tint-color" value="#4a90d9" aria-label="Map tint colour" />
+      </div>
+      <div class="pp-slider-row" id="map-tint-slider-row">
+        <label class="pp-slider-mini-label" for="map-tint-strength-slider">Strength</label>
+        <input type="range" class="pp-slider" id="map-tint-strength-slider" min="0" max="100" value="50" aria-label="Map tint strength" />
+        <span class="pp-slider-value" id="map-tint-strength-value">50%</span>
+      </div>
+    </div>
   </div>
   </div>
   <button id="clean-view-exit" title="Return UI controls">EXIT CLEAN VIEW</button>

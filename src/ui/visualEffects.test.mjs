@@ -74,7 +74,7 @@ test('construction is inert and initialization creates one owned pipeline', () =
   assert.equal(f.frames.size, 0);
   f.effects.initStyles();
   f.effects.initPostProcess();
-  assert.equal(f.stages.size, 7);
+  assert.equal(f.stages.size, 8);
   assert.ok(
     Object.values(f.effects.stages).every(
       (stage) => !stage.enabled && stage.uniforms.intensity === 0,
@@ -82,7 +82,7 @@ test('construction is inert and initialization creates one owned pipeline', () =
   );
   f.effects.initStyles();
   f.effects.initPostProcess();
-  assert.equal(f.stages.size, 7);
+  assert.equal(f.stages.size, 8);
   f.effects.destroy();
 });
 
@@ -199,7 +199,7 @@ test('stop revokes pending work immediately but retains stages until final destr
   assert.equal(f.frames.size, 0);
   assert.equal(
     f.stages.size,
-    7,
+    8,
     'Context and Cockpit may still be releasing these stages',
   );
   const intensity = f.effects.stages.retro.uniforms.intensity;
@@ -231,6 +231,27 @@ test('destroying one instance does not remove another pipeline or clock', () => 
   assert.equal(b.stages.size, 6);
   assert.equal(b.effects.stages.retro.uniforms.intensity, 0.5);
   b.effects.destroy();
+});
+
+test('the map tint stage enables only when toggled on with a visible strength', () => {
+  const f = fixture();
+  f.effects.initPostProcess();
+  assert.equal(f.effects.mapTintStage.enabled, false);
+  f.effects.setMapTintEnabled(true);
+  assert.equal(f.effects.mapTintStage.enabled, true);
+  f.effects.applyMapTintStrength(0);
+  assert.equal(f.effects.mapTintStage.enabled, false);
+  assert.equal(f.effects.mapTintStage.uniforms.strength, 0);
+  f.effects.applyMapTintStrength(0.5);
+  assert.equal(f.effects.mapTintStage.enabled, true);
+  f.effects.applyMapTintColor('#ff0000');
+  assert.equal(f.effects.mapTintStage.uniforms.tintColor.red, 1);
+  assert.equal(f.effects.mapTintStage.uniforms.tintColor.green, 0);
+  f.effects.applyMapTintColor('not-a-color');
+  assert.equal(f.effects.mapTintStage.uniforms.tintColor.red, 1);
+  f.effects.setMapTintEnabled(false);
+  assert.equal(f.effects.mapTintStage.enabled, false);
+  f.effects.destroy();
 });
 
 test('existing baseline and military presets keep one detection default', () => {
