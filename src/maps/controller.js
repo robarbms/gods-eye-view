@@ -2,6 +2,11 @@ import { indexMapSources } from './registry.js';
 import * as Cesium from 'cesium';
 import { createMapCredits } from './credits.js';
 import { acquireImageryComparison } from './imageryComparison.js';
+import {
+  createOsmVectorStyleImagery,
+  osmStylePreset,
+  DEFAULT_OSM_STYLE_ID,
+} from './osmVectorStyle.js';
 
 /**
  * Private `setStack` option marking a switch the controller issues itself
@@ -20,6 +25,8 @@ export class MapSourceController {
       onError = null,
       requestRender = () => viewer?.scene?.requestRender?.(),
       createImageryLayer = (provider) => new Cesium.ImageryLayer(provider),
+      createOsmStyleProvider = (styleId) =>
+        createOsmVectorStyleImagery({ styleId }),
     },
   ) {
     this.viewer = viewer;
@@ -32,6 +39,7 @@ export class MapSourceController {
     this._onError = onError;
     this._requestRender = requestRender;
     this._createImageryLayer = createImageryLayer;
+    this._createOsmStyleProvider = createOsmStyleProvider;
     this._credits = createMapCredits(viewer);
     this._abort = new AbortController();
     this._imageryProviders = new Map();
@@ -46,6 +54,8 @@ export class MapSourceController {
     this._lastError = null;
     this._imageryLayer = null;
     this._activeImageryProvider = null;
+    this._osmStyleId = DEFAULT_OSM_STYLE_ID;
+    this._osmStyleProviders = new Map();
     this._removeImageryErrorListener = null;
     this._terrainMode = null;
     this._subscribers = new Set();
@@ -90,6 +100,44 @@ export class MapSourceController {
   }
   getActiveStack() {
     return this.getStack(this._activeId);
+  }
+  /** Currently selected OSM basemap style id. */
+  getOsmStyle() {
+    return this._osmStyleId;
+  }
+  /**
+   * Choose the OSM basemap style. `default` keeps the plain raster OSM tiles;
+   * the other presets render OpenMapTiles vector styles client-side. The choice
+   * is remembered and only affects the OSM stack. When OSM is live the imagery
+   * provider is swapped immediately.
+   * @param {string} id - Style id from `src/maps/osmVectorStyle.js`.
+   * @returns {string} The applied style id.
+   */
+  setOsmStyle(id) {
+    const next = osmStylePreset(id).id;
+    if (next === this._osmStyleId) return this._osmStyleId;
+    this._osmStyleId = next;
+    if (this._activeId === 'osm' && !this._destroyed)
+      void this.setStack('osm', { silent: true });
+    return this._osmStyleId;
+  }
+  /** Cache and return the vector-style provider for a non-default OSM style. */
+  _osmStyleProvider(styleId) {
+    let provider = this._osmStyleProviders.get(styleId);
+    if (!provider) {
+      provider = this._createOsmStyleProvider(styleId);
+      this._osmStyleProviders.set(styleId, provider);
+    }
+    return provider;
+  }
+  /** The imagery provider to show for a resolved stack, applying the OSM style. */
+  _effectiveImageryProvider(resolution) {
+    if (
+      resolution.effectiveStackId === 'osm' &&
+      this._osmStyleId !== DEFAULT_OSM_STYLE_ID
+    )
+      return this._osmStyleProvider(this._osmStyleId) || resolution.provider;
+    return resolution.provider;
   }
   getSwitchGeneration() {
     return this._switchGen;
@@ -260,16 +308,14 @@ export class MapSourceController {
   async _activateGlobeStack(stack, gen) {
     const resolution = await this._getImageryProvider(stack);
     if (gen !== this._switchGen) return;
+    const provider = this._effectiveImageryProvider(resolution);
     // Scene shots reapply their map stack at every handoff. Keep the live
     // layer (and its loaded tiles) when the resolved provider is unchanged;
     // rebuilding it exposes the bare globe while imagery loads again.
-    if (
-      !this._imageryLayer ||
-      this._activeImageryProvider !== resolution.provider
-    ) {
+    if (!this._imageryLayer || this._activeImageryProvider !== provider) {
       this._removeImageryLayer();
-      this._imageryLayer = this._createImageryLayer(resolution.provider);
-      this._activeImageryProvider = resolution.provider;
+      this._imageryLayer = this._createImageryLayer(provider);
+      this._activeImageryProvider = provider;
       this.viewer.imageryLayers.add(this._imageryLayer, 0);
     }
     const source = this._sources.get(resolution.effectiveStackId);
@@ -424,6 +470,7 @@ export class MapSourceController {
     this._terrainProviders.clear();
     this._tilesets.clear();
     this._ownedTilesets.clear();
+    this._osmStyleProviders.clear();
     this._onChange = null;
     this._onError = null;
   }

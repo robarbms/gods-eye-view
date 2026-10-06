@@ -70,7 +70,7 @@ const settle = async () => {
   for (let i = 0; i < 20; i++) await Promise.resolve();
 };
 const descriptor = (id) => ({ id, label: id, kind: 'imagery' });
-function publicFixture() {
+function publicFixture(options) {
   const tileset = { show: true };
   const registry = createDefaultMapSources({ googleTileset: tileset });
   const providers = new Map();
@@ -84,7 +84,7 @@ function publicFixture() {
       create: async () => ({ provider: { id: 'terrain' } }),
     };
   }
-  return { ...fixture(registry), registry, providers, tileset };
+  return { ...fixture(registry, options), registry, providers, tileset };
 }
 
 test('an additional imagery source needs no controller branch and owns its cached resources', async () => {
@@ -292,6 +292,51 @@ test('one Esri tile failure stays put, two fall back, and stale errors cannot re
   errorEvent.raise({ timesRetried: 9 });
   await settle();
   assert.equal(env.controller.getActiveId(), 'photoreal');
+  env.controller.destroy();
+});
+
+test('OSM basemap style swaps the OSM imagery provider and leaves other stacks untouched', async () => {
+  const env = publicFixture({
+    createOsmStyleProvider: (styleId) => ({
+      id: `osm-style:${styleId}`,
+      errorEvent: event(),
+    }),
+  });
+  assert.equal(env.controller.getOsmStyle(), 'default');
+  await env.controller.setStack('osm');
+  assert.equal(env.imagery[0].provider.id, 'osm', 'default uses raster OSM');
+
+  assert.equal(env.controller.setOsmStyle('positron'), 'positron');
+  await settle();
+  assert.equal(
+    env.imagery[0].provider.id,
+    'osm-style:positron',
+    'a style swaps the OSM provider to the vector renderer',
+  );
+
+  assert.equal(env.controller.setOsmStyle('nonsense'), 'default');
+  await settle();
+  assert.equal(
+    env.imagery[0].provider.id,
+    'osm',
+    'an unknown style resets to the raster OSM tiles',
+  );
+
+  env.controller.setOsmStyle('dark');
+  await settle();
+  await env.controller.setStack('esri-imagery');
+  assert.equal(
+    env.imagery[0].provider.id,
+    'esri-imagery',
+    'a non-OSM stack ignores the OSM style',
+  );
+
+  await env.controller.setStack('osm');
+  assert.equal(
+    env.imagery[0].provider.id,
+    'osm-style:dark',
+    'the stored style re-applies on the rebuilt OSM layer',
+  );
   env.controller.destroy();
 });
 

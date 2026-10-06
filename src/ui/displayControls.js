@@ -44,6 +44,8 @@ export function bindDisplayControls({ elements, actions }) {
     listen(elements[name], 'input', action, integer);
   for (const el of elements.styleButtons || [])
     listen(el, 'click', 'setStyle', (el) => el.dataset.style);
+  for (const el of elements.osmStyleButtons || [])
+    listen(el, 'click', 'setOsmStyle', (el) => el.dataset.osmStyle);
   for (const el of elements.allocationButtons || [])
     listen(el, 'click', 'setAllocation', (el) => el.dataset.allocation);
   for (const el of elements.modelModeButtons || [])

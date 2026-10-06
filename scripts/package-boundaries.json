@@ -1250,10 +1250,11 @@
       "src/maps/registry.js",
       "src/maps/terrain.js",
       "src/maps/terrainRetry.js",
+      "src/maps/osmVectorStyle.js",
       "src/keySetupCore.mjs",
       "src/maps/imageryHost.js"
     ],
-    "external": ["cesium"]
+    "external": ["cesium", "@mapbox/vector-tile", "pbf"]
   },
   "voice-connection": {
     "exports": [
@@ -1727,6 +1728,7 @@
       "src/maps/registry.js",
       "src/maps/terrain.js",
       "src/maps/terrainRetry.js",
+      "src/maps/osmVectorStyle.js",
       "src/navigationPolicy.js",
       "src/orbit.js",
       "src/overlays/worldOverlay.js",

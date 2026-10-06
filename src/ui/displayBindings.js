@@ -12,10 +12,11 @@ export class DisplayBindings {
     operations,
     readState,
     claimDetection,
+    mapStackController,
   }) {
     Object.assign(
       this,
-      { viewer, services, readState, claimDetection },
+      { viewer, services, readState, claimDetection, mapStackController },
       elements,
       operations,
     );
@@ -119,6 +120,7 @@ export class DisplayBindings {
         celestialButton: this._celestialBtn,
         modelsButton: this._models3dBtn,
         modelModeButtons: this._models3dBtn ? this._models3dModeBtns : [],
+        osmStyleButtons: document.querySelectorAll('.osm-style-btn'),
       },
       actions: {
         setStyle: (style) => this.setStyle(style),
@@ -216,8 +218,19 @@ export class DisplayBindings {
           this._syncModels3dModeRow();
         },
         setModelsMode: (mode) => this._setModels3dMode(mode),
+        setOsmStyle: (style) => this._setOsmStyle(style),
       },
     });
+  }
+  /** Swap the OSM basemap style and light the chosen swatch. */
+  _setOsmStyle(style) {
+    this.shareLinkManager?.claimRestoreLane?.('visual');
+    const applied = this.mapStackController?.setOsmStyle?.(style) || style;
+    for (const btn of document.querySelectorAll('.osm-style-btn')) {
+      const active = btn.dataset.osmStyle === applied;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', String(active));
+    }
   }
   destroy() {
     this._applicationShortcuts?.destroy();

@@ -486,6 +486,7 @@ export class StyleManager extends ShellFacade {
     this._initBloomSharpen();
     this._displayBindings = new DisplayBindings({
       viewer,
+      mapStackController: this.mapStackController,
       services: {
         cycleDetectionMode: services.cycleDetectionMode,
         setScopeMaskEnabled: services.setScopeMaskEnabled,

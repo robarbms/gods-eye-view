@@ -153,6 +153,25 @@
         <span class="pp-label">Celestial</span>
       </button>
     </div>
+    <div class="pp-toggle-group" id="osm-style-group">
+      <div class="pp-slider-row visible osm-style-row">
+        <span class="pp-slider-mini-label" id="osm-style-label">OSM Map Style</span>
+        <div class="osm-style-swatches" role="radiogroup" aria-labelledby="osm-style-label">
+          <button class="osm-style-btn active" data-osm-style="default" role="radio" aria-checked="true" title="Default raster OSM tiles">
+            <span class="osm-style-dot" aria-hidden="true"></span><span class="osm-style-name">Default</span>
+          </button>
+          <button class="osm-style-btn" data-osm-style="positron" role="radio" aria-checked="false" title="Positron — light OpenMapTiles style">
+            <span class="osm-style-dot" aria-hidden="true"></span><span class="osm-style-name">Positron</span>
+          </button>
+          <button class="osm-style-btn" data-osm-style="dark" role="radio" aria-checked="false" title="Dark — dark OpenMapTiles style">
+            <span class="osm-style-dot" aria-hidden="true"></span><span class="osm-style-name">Dark</span>
+          </button>
+          <button class="osm-style-btn" data-osm-style="fiord" role="radio" aria-checked="false" title="Fiord — slate OpenMapTiles style">
+            <span class="osm-style-dot" aria-hidden="true"></span><span class="osm-style-name">Fiord</span>
+          </button>
+        </div>
+      </div>
+    </div>
     <button class="pp-toggle-btn" id="clean-view-toggle" title="Hide UI chrome">
       <span class="pp-icon">&#x25A1;</span>
       <span class="pp-label">Clean UI</span>
