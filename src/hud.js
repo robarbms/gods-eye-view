@@ -24,6 +24,7 @@ import {
   geoidHeight,
 } from './data/geoid.js';
 import { getBasemapLabelContext } from './voice/gevActions.js';
+import { HudOscilloscope } from './hudOscilloscope.js';
 import {
   hudSummaryMatchesProvenance,
   hudSummaryLayerContext,
@@ -113,6 +114,7 @@ export class IntelHUD {
     this._autoMode = true; // auto show/hide based on style
     this._currentStyle = 'normal';
     this._el = null;
+    this._oscilloscope = null;
     this._variant = DEFAULT_HUD_LAYOUT;
     this._recBlinkState = true;
     this._updateInterval = null;
@@ -211,6 +213,10 @@ export class IntelHUD {
         <div class="hud-content" style="text-align:right">
           <div class="hud-rec"><span id="hud-rec-dot">●</span> REC  <span id="hud-timestamp">2026-01-01 00:00:00Z</span></div>
           <div class="hud-orbital">ORB: ${this._orbitNum}  PASS: DESC-${this._passNum}</div>
+          <div class="hud-scope" aria-hidden="true">
+            <span class="hud-scope-label">AUD</span>
+            <canvas id="hud-oscilloscope" class="hud-oscilloscope" width="140" height="30"></canvas>
+          </div>
         </div>
         <div class="hud-bracket">┐</div>
       </div>
@@ -248,6 +254,31 @@ export class IntelHUD {
       </div>
     `;
     this._el.dataset.variant = this._variant;
+    this._initOscilloscope();
+  }
+
+  /**
+   * Mount the audio oscilloscope onto the top-right canvas and theme it to the
+   * current shader colors. Gated on HUD visibility so a hidden HUD stays idle.
+   */
+  _initOscilloscope() {
+    this._oscilloscope?.destroy();
+    this._oscilloscope = null;
+    const canvas = this._el?.querySelector('#hud-oscilloscope');
+    if (!canvas) return;
+    this._oscilloscope = new HudOscilloscope({ canvas });
+    const colors = HUD_COLORS[this._currentStyle] || HUD_COLORS._default;
+    this._oscilloscope.setColor(colors.main, colors.glow);
+    this._oscilloscope.setVisible(this._visible);
+  }
+
+  /**
+   * Drive the top-right oscilloscope from playback state.
+   * @param {{active?: boolean, level?: number}} activity - `active` gates the
+   *   waveform; `level` (0..1) scales its amplitude.
+   */
+  setAudioActivity(activity) {
+    this._oscilloscope?.setAudioActivity(activity);
   }
 
   /**
@@ -828,6 +859,7 @@ export class IntelHUD {
       this._el.style.setProperty('--hud-glow', colors.glow);
       this._el.style.setProperty('--hud-border', colors.border);
     }
+    this._oscilloscope?.setColor(colors.main, colors.glow);
 
     // Auto show/hide
     if (this._autoMode) {
@@ -843,6 +875,7 @@ export class IntelHUD {
   show() {
     this._visible = true;
     if (this._el) this._el.classList.add('active');
+    this._oscilloscope?.setVisible(true);
     this._updateCameraData(); // immediate update
     this._markSummaryDirty();
     void this._updateSummary(false, true);
@@ -852,6 +885,7 @@ export class IntelHUD {
   hide() {
     this._visible = false;
     if (this._el) this._el.classList.remove('active');
+    this._oscilloscope?.setVisible(false);
   }
 
   /** Toggle HUD visibility and disable auto-mode (user override). */
@@ -946,5 +980,7 @@ export class IntelHUD {
     this.viewer.camera.moveEnd.removeEventListener(this._onCameraMoveEnd);
     this._dataManagerUnsubscribe?.();
     this._summaryRequest?.abort();
+    this._oscilloscope?.destroy();
+    this._oscilloscope = null;
   }
 }

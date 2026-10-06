@@ -914,6 +914,27 @@ export class StyleManager extends ShellFacade {
         },
       });
     }
+    this._bindHudAudioOscilloscope(radioLayer);
+  }
+
+  /**
+   * Feed the Intel HUD's top-right oscilloscope from internet-radio playback.
+   * The radio streams are cross-origin, so the HUD synthesizes a waveform
+   * gated by playback activity and scaled by the effective (ducked) volume
+   * rather than tapping the tainted media element.
+   * @param {object} radioLayer - Radio layer port exposing `subscribe`.
+   */
+  _bindHudAudioOscilloscope(radioLayer) {
+    this._hudAudioUnsubscribe?.();
+    this._hudAudioUnsubscribe =
+      radioLayer?.subscribe?.((state) => {
+        const active =
+          state?.audioState === 'playing' && Number(state?.effectiveVolume) > 0;
+        this.hud?.setAudioActivity({
+          active,
+          level: active ? Number(state.effectiveVolume) || 0 : 0,
+        });
+      }) || null;
   }
 
   /**
@@ -1535,6 +1556,8 @@ export class StyleManager extends ShellFacade {
     this._cctvControls?.destroy();
     this._radioControls?.destroy();
     this._localSdrControls?.destroy();
+    this._hudAudioUnsubscribe?.();
+    this._hudAudioUnsubscribe = null;
     this._cockpitCoordinator.stop();
     this._visualSettings.stop();
     this.shareLinkManager?.destroy();

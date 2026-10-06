@@ -270,6 +270,29 @@
   letter-spacing: 1.5px;
 }
 
+/* Audio oscilloscope — synthesized waveform gated by radio playback. */
+.hud-scope {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.hud-scope-label {
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  opacity: 0.55;
+}
+
+.hud-oscilloscope {
+  width: 140px;
+  height: 30px;
+  opacity: 0.85;
+  border: 1px solid var(--hud-border);
+  background: rgba(0, 0, 0, 0.18);
+}
+
 /* Edge annotations (vertical text) */
 .hud-edge {
   position: absolute;

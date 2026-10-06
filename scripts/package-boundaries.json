@@ -1492,6 +1492,7 @@
       "src/firstRunExperience.js",
       "src/hud.js",
       "src/hudLocality.js",
+      "src/hudOscilloscope.js",
       "src/hudSummaryResponse.js",
       "src/keySetup.js",
       "src/keySetupCore.mjs",
