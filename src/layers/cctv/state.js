@@ -17,6 +17,11 @@ export function createState({ services }) {
 
   layerState._billboards = null;
 
+  // The application DataLayerManager, attached post-construction. The CCTV
+  // layer owns the WSDOT highway-cameras layer's enablement and cascades its
+  // own enable/disable to it (see lifecycle.js).
+  layerState._dataManager = null;
+
   layerState._records = [];
 
   layerState._recordById = new Map();

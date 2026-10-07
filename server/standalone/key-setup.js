@@ -153,7 +153,12 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
       ? false
       : LAUNCHER_AT_BOOT === 'dev-fresh'
         ? DEV_FRESH_EXTERNAL_KEYS_AT_BOOT.has(name)
-        : PROVIDER_ENV_AT_BOOT[name] !== '';
+        : // A name the snapshot never captured was NOT supplied externally at
+          // boot. Coalesce rather than compare `undefined`, so a registry that
+          // grew since this process started (the snapshot is memoized across
+          // in-process restarts) cannot misread a brand-new provider as
+          // external and strip its input out of the panel.
+          String(PROVIDER_ENV_AT_BOOT[name] ?? '') !== '';
     return isKeySetupExternallyManaged({
       effectiveValue: process.env[name],
       storedValue: inStore[name],
