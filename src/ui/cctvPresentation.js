@@ -27,6 +27,10 @@ export function _renderCctvState(state) {
   const activeId = state?.activeCameraId || '';
   const activeCamera = state?.activeCamera || null;
 
+  // A live CCTV camera reclaims the palette from any external (e.g. WSDOT)
+  // snapshot that was borrowing the frame area.
+  if (activeCamera && this._externalFrame) this._externalFrame = null;
+
   // Auto-expand the panel when the active camera CHANGES to a new non-null
   // id while the layer is enabled. Covers click-on-globe, panel controls,
   // and voice (selectCamera/cycleCamera/focusNearest all notify through
@@ -156,6 +160,8 @@ export function _renderCctvState(state) {
         : '';
       const projLabel = state?.showProjection !== false ? 'MONITOR' : 'OFF';
       this._cctvMeta.textContent = `${activeCamera.city} · HDG ${Math.round(activeCamera.headingDeg)}° · FOV ${Math.round(activeCamera.fovDeg)}° · RANGE ${Math.round(activeCamera.rangeM)}m · ${projLabel}${calBadge ? ` · ${calBadge}` : ''} · ${provider}${credit}${statusMsg}`;
+    } else if (this._externalFrame) {
+      // An external snapshot owns the caption while it borrows the palette.
     } else if (cameras.length > 0) {
       this._cctvMeta.textContent = enabled
         ? `${cameras.length} cameras loaded · click a camera to activate`
@@ -202,7 +208,8 @@ export function _renderCctvState(state) {
       this._queueCctvFrame(nextSrc, nextCameraId, cameraChanged);
     }
     if (!nextSrc) {
-      this._clearCctvFrame();
+      // Preserve a borrowed external snapshot instead of clearing the frame.
+      if (!(this._externalFrame && !activeCamera)) this._clearCctvFrame();
     }
   } else if (liveIntent) {
     this._clearCctvFrame();
