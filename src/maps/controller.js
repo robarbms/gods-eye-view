@@ -4,7 +4,9 @@ import { createMapCredits } from './credits.js';
 import { acquireImageryComparison } from './imageryComparison.js';
 import {
   createOsmVectorStyleImagery,
+  normalizeOsmMonoColor,
   osmStylePreset,
+  DEFAULT_OSM_MONO_COLOR,
   DEFAULT_OSM_STYLE_ID,
 } from './osmVectorStyle.js';
 
@@ -25,8 +27,8 @@ export class MapSourceController {
       onError = null,
       requestRender = () => viewer?.scene?.requestRender?.(),
       createImageryLayer = (provider) => new Cesium.ImageryLayer(provider),
-      createOsmStyleProvider = (styleId) =>
-        createOsmVectorStyleImagery({ styleId }),
+      createOsmStyleProvider = (styleId, { color } = {}) =>
+        createOsmVectorStyleImagery({ styleId, color }),
     },
   ) {
     this.viewer = viewer;
@@ -55,6 +57,7 @@ export class MapSourceController {
     this._imageryLayer = null;
     this._activeImageryProvider = null;
     this._osmStyleId = DEFAULT_OSM_STYLE_ID;
+    this._osmMonoColor = DEFAULT_OSM_MONO_COLOR;
     this._osmStyleProviders = new Map();
     this._removeImageryErrorListener = null;
     this._terrainMode = null;
@@ -121,11 +124,36 @@ export class MapSourceController {
       void this.setStack('osm', { silent: true });
     return this._osmStyleId;
   }
+  /** Colour the `mono` OSM style is generated from. */
+  getOsmMonoColor() {
+    return this._osmMonoColor;
+  }
+  /**
+   * Set the colour of the generated `mono` OSM style. Only the latest colour's
+   * provider is kept; the swap is immediate when `mono` is live on OSM.
+   * @param {string} color - `#rgb`/`#rrggbb` colour; invalid input is ignored.
+   * @returns {string} The applied colour.
+   */
+  setOsmMonoColor(color) {
+    const next = normalizeOsmMonoColor(color);
+    if (!next || next === this._osmMonoColor) return this._osmMonoColor;
+    this._osmMonoColor = next;
+    this._osmStyleProviders.delete('mono');
+    if (
+      this._osmStyleId === 'mono' &&
+      this._activeId === 'osm' &&
+      !this._destroyed
+    )
+      void this.setStack('osm', { silent: true });
+    return this._osmMonoColor;
+  }
   /** Cache and return the vector-style provider for a non-default OSM style. */
   _osmStyleProvider(styleId) {
     let provider = this._osmStyleProviders.get(styleId);
     if (!provider) {
-      provider = this._createOsmStyleProvider(styleId);
+      provider = this._createOsmStyleProvider(styleId, {
+        color: this._osmMonoColor,
+      });
       this._osmStyleProviders.set(styleId, provider);
     }
     return provider;

@@ -49,6 +49,15 @@ export function bindDisplayControls({ elements, actions }) {
     listen(el, 'click', 'setStyle', (el) => el.dataset.style);
   for (const el of elements.osmStyleButtons || [])
     listen(el, 'click', 'setOsmStyle', (el) => el.dataset.osmStyle);
+  // `input` only previews the swatch while dragging; `change` (picker committed)
+  // rebuilds the map tiles once.
+  listen(
+    elements.osmMonoColor,
+    'input',
+    'previewOsmMonoColor',
+    (el) => el.value,
+  );
+  listen(elements.osmMonoColor, 'change', 'setOsmMonoColor', (el) => el.value);
   for (const el of elements.allocationButtons || [])
     listen(el, 'click', 'setAllocation', (el) => el.dataset.allocation);
   for (const el of elements.modelModeButtons || [])

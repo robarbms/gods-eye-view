@@ -7,7 +7,8 @@ import { VectorTile } from '@mapbox/vector-tile';
  * rasterises OpenFreeMap vector tiles to a canvas per imagery tile, so the OSM
  * basemap can be re-styled without a keyed raster service. The three palettes
  * approximate the OpenMapTiles reference styles (Positron, Dark Matter, Fiord
- * Color); labels are intentionally omitted.
+ * Color); `mono` generates a monochrome palette from one user-picked colour.
+ * Labels are intentionally omitted.
  */
 
 export const OPENFREEMAP_TILEJSON_URL = 'https://tiles.openfreemap.org/planet';
@@ -23,7 +24,102 @@ export const OSM_STYLES = Object.freeze([
   { id: 'positron', label: 'Positron' },
   { id: 'dark', label: 'Dark' },
   { id: 'fiord', label: 'Fiord' },
+  { id: 'mono', label: 'Mono' },
 ]);
+
+/** Starting colour of the user-tinted `mono` style. */
+export const DEFAULT_OSM_MONO_COLOR = '#3cff7a';
+
+/** Normalise `#rgb`/`#rrggbb` input to lowercase `#rrggbb`, or return null. */
+export function normalizeOsmMonoColor(value) {
+  const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(value ?? ''));
+  if (!match) return null;
+  const hex =
+    match[1].length === 3 ? [...match[1]].map((c) => c + c).join('') : match[1];
+  return `#${hex.toLowerCase()}`;
+}
+
+// Lightness (0–1) of each palette slot in the generated monochrome style: a dark
+// ground with progressively brighter structures, so roads read as the "ink".
+const MONO_LIGHTNESS = Object.freeze({
+  land: 0.07,
+  water: 0.03,
+  waterway: 0.05,
+  wood: 0.1,
+  grass: 0.09,
+  park: 0.11,
+  farmland: 0.08,
+  sand: 0.09,
+  ice: 0.13,
+  rock: 0.1,
+  wetland: 0.09,
+  residential: 0.09,
+  commercial: 0.1,
+  industrial: 0.09,
+  building: 0.15,
+  roadFill: 0.34,
+  roadCasing: 0.04,
+  railFill: 0.24,
+  path: 0.2,
+  boundary: 0.3,
+});
+
+function hexToHsl(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return { h: 0, s: 0, l };
+  const s = d / (1 - Math.abs(2 * l - 1));
+  let h;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return { h: (h * 60 + 360) % 360, s, l };
+}
+
+function hslToHex(h, s, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  const [r, g, b] =
+    h < 60
+      ? [c, x, 0]
+      : h < 120
+        ? [x, c, 0]
+        : h < 180
+          ? [0, c, x]
+          : h < 240
+            ? [0, x, c]
+            : h < 300
+              ? [x, 0, c]
+              : [c, 0, x];
+  const byte = (v) =>
+    Math.round((v + m) * 255)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${byte(r)}${byte(g)}${byte(b)}`;
+}
+
+/**
+ * Generate a full monochrome palette from one colour: its hue and saturation
+ * are kept, and each map feature gets a fixed lightness step (dark ground,
+ * bright roads). A grey pick yields a neutral greyscale map.
+ * @param {string} color - Any `#rgb`/`#rrggbb` colour.
+ * @returns {Record<string,string>} A palette with the same keys as the presets.
+ */
+export function createMonochromePalette(color) {
+  const hex = normalizeOsmMonoColor(color) || DEFAULT_OSM_MONO_COLOR;
+  const { h, s } = hexToHsl(hex);
+  const palette = {};
+  for (const [key, l] of Object.entries(MONO_LIGHTNESS))
+    palette[key] = hslToHex(h, s, l);
+  return Object.freeze(palette);
+}
 
 export const OSM_STYLE_IDS = Object.freeze(OSM_STYLES.map((style) => style.id));
 
@@ -357,10 +453,12 @@ function createTemplateResolver(fetchImpl, tileJsonUrl) {
  * style to raster tiles. Mirrors the duck-typed provider shape used elsewhere in
  * the app (see `src/layers/weather/rasterTiles.js`); tiles are fetched lazily by
  * `requestImage` and a fetch/decode failure degrades to a flat land-colour tile.
+ * `color` only applies to the `mono` style.
  * @returns {object} A Cesium `ImageryProvider`-shaped object.
  */
 export function createOsmVectorStyleImagery({
   styleId,
+  color = DEFAULT_OSM_MONO_COLOR,
   cesium = CesiumNS,
   fetchImpl = (...args) => globalThis.fetch(...args),
   createCanvas = () => document.createElement('canvas'),
@@ -370,7 +468,10 @@ export function createOsmVectorStyleImagery({
   credit = OSM_VECTOR_CREDIT,
 } = {}) {
   const preset = osmStylePreset(styleId);
-  const palette = OSM_STYLE_PALETTES[preset.id];
+  const palette =
+    preset.id === 'mono'
+      ? createMonochromePalette(color)
+      : OSM_STYLE_PALETTES[preset.id];
   if (!palette)
     throw new Error(`No vector palette for OSM style: ${String(styleId)}`);
   const tilingScheme = new cesium.WebMercatorTilingScheme();

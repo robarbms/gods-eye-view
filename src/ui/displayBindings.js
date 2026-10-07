@@ -127,6 +127,7 @@ export class DisplayBindings {
         modelsButton: this._models3dBtn,
         modelModeButtons: this._models3dBtn ? this._models3dModeBtns : [],
         osmStyleButtons: document.querySelectorAll('.osm-style-btn'),
+        osmMonoColor: document.getElementById('osm-mono-color'),
       },
       actions: {
         setStyle: (style) => this.setStyle(style, { userInitiated: true }),
@@ -225,6 +226,13 @@ export class DisplayBindings {
         },
         setModelsMode: (mode) => this._setModels3dMode(mode),
         setOsmStyle: (style) => this._setOsmStyle(style),
+        previewOsmMonoColor: (color) => this._previewOsmMonoColor(color),
+        setOsmMonoColor: (color) => {
+          const applied =
+            this.mapStackController?.setOsmMonoColor?.(color) || color;
+          this._previewOsmMonoColor(applied);
+          this._setOsmStyle('mono');
+        },
         toggleMapTint: () => {
           this.shareLinkManager?.claimRestoreLane?.('visual');
           this._setMapTintEnabled(!this.mapTintEnabled);
@@ -239,6 +247,11 @@ export class DisplayBindings {
         },
       },
     });
+  }
+  /** Show a Mono colour on its swatch dot without rebuilding map tiles. */
+  _previewOsmMonoColor(color) {
+    for (const group of document.querySelectorAll('.osm-style-swatches'))
+      group.style.setProperty('--osm-mono-color', color);
   }
   /** Swap the OSM basemap style and light the chosen swatch. */
   _setOsmStyle(style) {

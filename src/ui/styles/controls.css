@@ -989,6 +989,25 @@ body.gev-drawing #cesiumContainer canvas {
 .osm-style-btn[data-osm-style='fiord'] .osm-style-dot {
   background: #3a4b5c;
 }
+.osm-style-swatches {
+  --osm-mono-color: #3cff7a;
+}
+.osm-style-btn[data-osm-style='mono'] .osm-style-dot {
+  background: var(--osm-mono-color);
+}
+.osm-mono-picker {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 0 0 6px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
 .osm-style-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);

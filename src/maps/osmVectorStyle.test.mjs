@@ -8,6 +8,9 @@ import {
   osmStylePreset,
   drawOsmVectorTile,
   createOsmVectorStyleImagery,
+  createMonochromePalette,
+  normalizeOsmMonoColor,
+  DEFAULT_OSM_MONO_COLOR,
 } from './osmVectorStyle.js';
 
 /** A context double that records the paint operations issued against it. */
@@ -45,13 +48,53 @@ function fakeTile(layers) {
   return { layers: built };
 }
 
-test('style presets expose default plus the three OpenMapTiles styles', () => {
+test('style presets expose default, the three OpenMapTiles styles and mono', () => {
   assert.equal(DEFAULT_OSM_STYLE_ID, 'default');
-  assert.deepEqual(OSM_STYLE_IDS, ['default', 'positron', 'dark', 'fiord']);
-  assert.equal(OSM_STYLES.length, 4);
+  assert.deepEqual(OSM_STYLE_IDS, [
+    'default',
+    'positron',
+    'dark',
+    'fiord',
+    'mono',
+  ]);
+  assert.equal(OSM_STYLES.length, 5);
   for (const id of ['positron', 'dark', 'fiord'])
     assert.ok(OSM_STYLE_PALETTES[id].land, `${id} has a land colour`);
   assert.equal(OSM_STYLE_PALETTES.default, undefined);
+});
+
+test('createMonochromePalette derives every palette slot from one colour', () => {
+  const green = createMonochromePalette('#00ff00');
+  assert.deepEqual(
+    Object.keys(green).sort(),
+    Object.keys(OSM_STYLE_PALETTES.dark).sort(),
+    'same slots as the preset palettes',
+  );
+  for (const [key, hex] of Object.entries(green)) {
+    assert.match(hex, /^#[0-9a-f]{6}$/, key);
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    assert.ok(g >= r && g >= b, `${key} stays green-hued (${hex})`);
+  }
+  const lum = (hex) => parseInt(hex.slice(3, 5), 16);
+  assert.ok(lum(green.roadFill) > lum(green.land), 'roads brighter than land');
+  assert.ok(lum(green.water) < lum(green.land), 'water darker than land');
+
+  const grey = createMonochromePalette('#808080');
+  for (const hex of Object.values(grey))
+    assert.equal(hex.slice(1, 3), hex.slice(3, 5), 'grey input stays neutral');
+
+  assert.deepEqual(
+    createMonochromePalette('not a colour'),
+    createMonochromePalette(DEFAULT_OSM_MONO_COLOR),
+    'invalid input falls back to the default colour',
+  );
+});
+
+test('normalizeOsmMonoColor accepts #rgb/#rrggbb and rejects the rest', () => {
+  assert.equal(normalizeOsmMonoColor('#F80'), '#ff8800');
+  assert.equal(normalizeOsmMonoColor('#FF3300'), '#ff3300');
+  assert.equal(normalizeOsmMonoColor('red'), null);
+  assert.equal(normalizeOsmMonoColor(undefined), null);
 });
 
 test('osmStylePreset normalises unknown or missing ids to default', () => {

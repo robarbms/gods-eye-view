@@ -340,6 +340,33 @@ test('OSM basemap style swaps the OSM imagery provider and leaves other stacks u
   env.controller.destroy();
 });
 
+test('mono OSM style rebuilds its provider when the picked colour changes', async () => {
+  const env = publicFixture({
+    createOsmStyleProvider: (styleId, { color } = {}) => ({
+      id: `osm-style:${styleId}:${color}`,
+      errorEvent: event(),
+    }),
+  });
+  await env.controller.setStack('osm');
+  env.controller.setOsmStyle('mono');
+  await settle();
+  assert.equal(env.imagery[0].provider.id, 'osm-style:mono:#3cff7a');
+
+  assert.equal(env.controller.setOsmMonoColor('#FF3300'), '#ff3300');
+  await settle();
+  assert.equal(
+    env.imagery[0].provider.id,
+    'osm-style:mono:#ff3300',
+    'a new colour swaps the live mono provider',
+  );
+  assert.equal(
+    env.controller.setOsmMonoColor('bogus'),
+    '#ff3300',
+    'invalid colours are ignored',
+  );
+  env.controller.destroy();
+});
+
 test('tooltips and rejected selection share the registry reason, including retired map IDs', async () => {
   const errors = [],
     env = publicFixture();
