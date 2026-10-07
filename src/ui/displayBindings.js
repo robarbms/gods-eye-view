@@ -68,7 +68,7 @@ export class DisplayBindings {
       documentRef: document,
       searchInput: this._locationSearch,
       actions: {
-        setStyle: (style) => this.setStyle(style),
+        setStyle: (style) => this.setStyle(style, { userInitiated: true }),
         dismissSearch: () => {
           if (this._locationSearch.classList.contains('expanded')) {
             this._locationSearch.classList.remove('expanded');
@@ -129,7 +129,7 @@ export class DisplayBindings {
         osmStyleButtons: document.querySelectorAll('.osm-style-btn'),
       },
       actions: {
-        setStyle: (style) => this.setStyle(style),
+        setStyle: (style) => this.setStyle(style, { userInitiated: true }),
         toggleBloom: () => {
           this.shareLinkManager?.claimRestoreLane?.('visual');
           this._setBloomEnabled(!this.bloomEnabled);
