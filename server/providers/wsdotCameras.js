@@ -1,5 +1,8 @@
 import path from 'node:path';
 import { promises as fsp } from 'node:fs';
+import { readResponseJsonCapped } from './common/http.js';
+
+const WSDOT_MAX_CATALOG_BYTES = 8 * 1024 * 1024;
 
 /**
  * WSDOT Highway Cameras proxy with a memory + disk cache.
@@ -63,9 +66,14 @@ export function wsdotCamerasProxy() {
    */
   async function refreshUpstream(code) {
     const url = `https://wsdot.wa.gov/Traffic/api/HighwayCameras/HighwayCamerasREST.svc/GetCamerasAsJson?AccessCode=${encodeURIComponent(code)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    const signal = AbortSignal.timeout(30_000);
+    const res = await fetch(url, { signal, redirect: 'error' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const body = await res.json();
+    const body = await readResponseJsonCapped(
+      res,
+      WSDOT_MAX_CATALOG_BYTES,
+      signal,
+    );
     if (!Array.isArray(body)) throw new Error('non-array upstream response');
     return { at: Date.now(), cameras: body };
   }
