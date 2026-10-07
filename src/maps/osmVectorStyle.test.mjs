@@ -10,6 +10,10 @@ import {
   createOsmVectorStyleImagery,
   createMonochromePalette,
   normalizeOsmMonoColor,
+  resolveOsmVariantPaint,
+  osmStyleVariant,
+  OSM_STYLE_VARIANTS,
+  DEFAULT_OSM_STYLE_VARIANT,
   DEFAULT_OSM_MONO_COLOR,
 } from './osmVectorStyle.js';
 
@@ -208,4 +212,104 @@ test('requestImage degrades to a flat land tile when the tile fetch fails', asyn
   assert.ok(getContextCalled);
   assert.equal(painted.fillStyle, OSM_STYLE_PALETTES.fiord.land);
   assert.deepEqual(painted.rect, [0, 0, 256, 256]);
+});
+
+test('style variants list None then the four outline variants', () => {
+  assert.equal(DEFAULT_OSM_STYLE_VARIANT, 'normal');
+  assert.deepEqual(
+    OSM_STYLE_VARIANTS.map((v) => v.id),
+    [
+      'normal',
+      'outline',
+      'outline-light',
+      'outline-inverted',
+      'outline-light-inverted',
+    ],
+  );
+  assert.equal(osmStyleVariant('bogus').id, 'normal');
+});
+
+test('outline variants flatten fills and keep style-coloured lines', () => {
+  const base = OSM_STYLE_PALETTES.fiord;
+  const dark = resolveOsmVariantPaint(base, 'outline');
+  assert.equal(dark.cased, false);
+  for (const key of ['land', 'water', 'park', 'building', 'residential'])
+    assert.equal(dark.palette[key], '#000000', `${key} is black`);
+  assert.equal(dark.palette.roadFill, base.roadFill);
+  assert.equal(dark.palette.boundary, base.boundary);
+  assert.ok(dark.coast, 'coastline is stroked');
+
+  const light = resolveOsmVariantPaint(base, 'outline-light');
+  assert.equal(light.palette.land, '#ffffff');
+  assert.equal(light.palette.water, '#ffffff');
+
+  // Positron's white roads would vanish on white; a contrasting style colour
+  // is used instead.
+  const positronLight = resolveOsmVariantPaint(
+    OSM_STYLE_PALETTES.positron,
+    'outline-light',
+  );
+  assert.notEqual(positronLight.palette.roadFill, '#ffffff');
+});
+
+test('inverted outline variants keep fills and ink lines black or white', () => {
+  const base = OSM_STYLE_PALETTES.positron;
+  const inv = resolveOsmVariantPaint(base, 'outline-inverted');
+  assert.equal(inv.palette.land, base.land);
+  assert.equal(inv.palette.water, base.water);
+  for (const key of ['roadFill', 'railFill', 'path', 'boundary'])
+    assert.equal(inv.palette[key], '#000000');
+  assert.equal(inv.coast, '#000000');
+  const invLight = resolveOsmVariantPaint(base, 'outline-light-inverted');
+  assert.equal(invLight.palette.roadFill, '#ffffff');
+  assert.equal(invLight.coast, '#ffffff');
+  assert.equal(resolveOsmVariantPaint(base, 'normal').palette, base);
+});
+
+test('outline variant paints coastlines and skips road casings', () => {
+  const { ctx, calls } = recordingContext();
+  const square = [
+    [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 0 },
+    ],
+  ];
+  const tile = fakeTile({
+    water: [{ properties: { class: 'ocean' }, geometry: square }],
+    transportation: [
+      {
+        properties: { class: 'primary' },
+        geometry: [
+          [
+            { x: 0, y: 0 },
+            { x: 50, y: 50 },
+          ],
+        ],
+      },
+    ],
+  });
+  const palette = OSM_STYLE_PALETTES.fiord;
+  drawOsmVectorTile(ctx, tile, {
+    palette,
+    tileSize: 256,
+    zoom: 10,
+    variant: 'outline',
+  });
+  const strokes = calls.filter((c) => c[0] === 'stroke').map((c) => c[1]);
+  assert.ok(strokes.length === 2, `coast + road only, got ${strokes}`);
+  assert.ok(!strokes.includes(palette.roadCasing), 'no casing');
+  assert.ok(strokes.includes(palette.roadFill), 'road in style colour');
+});
+
+test('near-tone mono palette keeps land at the picked colour', () => {
+  const near = createMonochromePalette('#3cff7a', { tone: 'near' });
+  const dark = createMonochromePalette('#3cff7a');
+  const g = (hex) => parseInt(hex.slice(3, 5), 16);
+  assert.ok(g(near.land) >= 0xf0, `land near the pick (${near.land})`);
+  assert.ok(g(near.land) > g(dark.land) * 3, 'much brighter than dark tone');
+  assert.ok(g(near.water) < g(near.land), 'water still a step darker');
+  const black = createMonochromePalette('#000000', { tone: 'near' });
+  assert.ok(Object.values(black).every((hex) => /^#[0-9a-f]{6}$/.test(hex)));
 });

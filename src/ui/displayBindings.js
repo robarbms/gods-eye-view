@@ -128,6 +128,7 @@ export class DisplayBindings {
         modelModeButtons: this._models3dBtn ? this._models3dModeBtns : [],
         osmStyleButtons: document.querySelectorAll('.osm-style-btn'),
         osmMonoColor: document.getElementById('osm-mono-color'),
+        osmVariant: document.getElementById('osm-style-variant'),
       },
       actions: {
         setStyle: (style) => this.setStyle(style, { userInitiated: true }),
@@ -226,6 +227,13 @@ export class DisplayBindings {
         },
         setModelsMode: (mode) => this._setModels3dMode(mode),
         setOsmStyle: (style) => this._setOsmStyle(style),
+        setOsmVariant: (variant) => {
+          this.shareLinkManager?.claimRestoreLane?.('visual');
+          const applied =
+            this.mapStackController?.setOsmVariant?.(variant) || variant;
+          const select = document.getElementById('osm-style-variant');
+          if (select) select.value = applied;
+        },
         previewOsmMonoColor: (color) => this._previewOsmMonoColor(color),
         setOsmMonoColor: (color) => {
           const applied =
@@ -262,6 +270,9 @@ export class DisplayBindings {
       btn.classList.toggle('active', active);
       btn.setAttribute('aria-checked', String(active));
     }
+    // Variants only exist for the vector styles, not the raster Default.
+    const variantSelect = document.getElementById('osm-style-variant');
+    if (variantSelect) variantSelect.disabled = applied === 'default';
   }
   destroy() {
     this._applicationShortcuts?.destroy();

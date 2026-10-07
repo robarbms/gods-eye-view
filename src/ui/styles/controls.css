@@ -995,6 +995,10 @@ body.gev-drawing #cesiumContainer canvas {
 .osm-style-btn[data-osm-style='mono'] .osm-style-dot {
   background: var(--osm-mono-color);
 }
+.pp-select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .osm-mono-picker {
   display: flex;
   align-items: center;

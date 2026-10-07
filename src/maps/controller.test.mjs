@@ -367,6 +367,31 @@ test('mono OSM style rebuilds its provider when the picked colour changes', asyn
   env.controller.destroy();
 });
 
+test('OSM style variant rebuilds the vector provider but not raster Default', async () => {
+  const env = publicFixture({
+    createOsmStyleProvider: (styleId, { variant } = {}) => ({
+      id: `osm-style:${styleId}:${variant}`,
+      errorEvent: event(),
+    }),
+  });
+  await env.controller.setStack('osm');
+  assert.equal(env.controller.setOsmVariant('outline'), 'outline');
+  await settle();
+  assert.equal(env.imagery[0].provider.id, 'osm', 'Default stays raster');
+
+  env.controller.setOsmStyle('dark');
+  await settle();
+  assert.equal(env.imagery[0].provider.id, 'osm-style:dark:outline');
+  env.controller.setOsmVariant('outline-light-inverted');
+  await settle();
+  assert.equal(
+    env.imagery[0].provider.id,
+    'osm-style:dark:outline-light-inverted',
+  );
+  assert.equal(env.controller.setOsmVariant('bogus'), 'normal');
+  env.controller.destroy();
+});
+
 test('tooltips and rejected selection share the registry reason, including retired map IDs', async () => {
   const errors = [],
     env = publicFixture();

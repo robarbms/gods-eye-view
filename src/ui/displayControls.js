@@ -58,6 +58,7 @@ export function bindDisplayControls({ elements, actions }) {
     (el) => el.value,
   );
   listen(elements.osmMonoColor, 'change', 'setOsmMonoColor', (el) => el.value);
+  listen(elements.osmVariant, 'change', 'setOsmVariant', (el) => el.value);
   for (const el of elements.allocationButtons || [])
     listen(el, 'click', 'setAllocation', (el) => el.dataset.allocation);
   for (const el of elements.modelModeButtons || [])

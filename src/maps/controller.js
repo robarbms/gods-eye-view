@@ -6,8 +6,10 @@ import {
   createOsmVectorStyleImagery,
   normalizeOsmMonoColor,
   osmStylePreset,
+  osmStyleVariant,
   DEFAULT_OSM_MONO_COLOR,
   DEFAULT_OSM_STYLE_ID,
+  DEFAULT_OSM_STYLE_VARIANT,
 } from './osmVectorStyle.js';
 
 /**
@@ -27,8 +29,8 @@ export class MapSourceController {
       onError = null,
       requestRender = () => viewer?.scene?.requestRender?.(),
       createImageryLayer = (provider) => new Cesium.ImageryLayer(provider),
-      createOsmStyleProvider = (styleId, { color } = {}) =>
-        createOsmVectorStyleImagery({ styleId, color }),
+      createOsmStyleProvider = (styleId, { color, variant } = {}) =>
+        createOsmVectorStyleImagery({ styleId, color, variant }),
     },
   ) {
     this.viewer = viewer;
@@ -58,6 +60,7 @@ export class MapSourceController {
     this._activeImageryProvider = null;
     this._osmStyleId = DEFAULT_OSM_STYLE_ID;
     this._osmMonoColor = DEFAULT_OSM_MONO_COLOR;
+    this._osmVariant = DEFAULT_OSM_STYLE_VARIANT;
     this._osmStyleProviders = new Map();
     this._removeImageryErrorListener = null;
     this._terrainMode = null;
@@ -138,7 +141,8 @@ export class MapSourceController {
     const next = normalizeOsmMonoColor(color);
     if (!next || next === this._osmMonoColor) return this._osmMonoColor;
     this._osmMonoColor = next;
-    this._osmStyleProviders.delete('mono');
+    for (const key of this._osmStyleProviders.keys())
+      if (key.startsWith('mono|')) this._osmStyleProviders.delete(key);
     if (
       this._osmStyleId === 'mono' &&
       this._activeId === 'osm' &&
@@ -147,14 +151,38 @@ export class MapSourceController {
       void this.setStack('osm', { silent: true });
     return this._osmMonoColor;
   }
+  /** Currently selected OSM style variant id (`normal` = no variant). */
+  getOsmVariant() {
+    return this._osmVariant;
+  }
+  /**
+   * Choose the rendering variant (Outline, Outline light, …) layered on the
+   * selected vector OSM style. It has no effect on the raster `default` style.
+   * @param {string} id - Variant id from `OSM_STYLE_VARIANTS`.
+   * @returns {string} The applied variant id.
+   */
+  setOsmVariant(id) {
+    const next = osmStyleVariant(id).id;
+    if (next === this._osmVariant) return this._osmVariant;
+    this._osmVariant = next;
+    if (
+      this._osmStyleId !== DEFAULT_OSM_STYLE_ID &&
+      this._activeId === 'osm' &&
+      !this._destroyed
+    )
+      void this.setStack('osm', { silent: true });
+    return this._osmVariant;
+  }
   /** Cache and return the vector-style provider for a non-default OSM style. */
   _osmStyleProvider(styleId) {
-    let provider = this._osmStyleProviders.get(styleId);
+    const key = `${styleId}|${this._osmVariant}`;
+    let provider = this._osmStyleProviders.get(key);
     if (!provider) {
       provider = this._createOsmStyleProvider(styleId, {
         color: this._osmMonoColor,
+        variant: this._osmVariant,
       });
-      this._osmStyleProviders.set(styleId, provider);
+      this._osmStyleProviders.set(key, provider);
     }
     return provider;
   }
