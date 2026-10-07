@@ -217,6 +217,11 @@ export class StyleManager extends ShellFacade {
         _sharpenSlider: this._sharpenSlider,
         _sharpenSliderRow: this._sharpenSliderRow,
         _sharpenSliderValue: this._sharpenSliderValue,
+        _mapTintBtn: this._mapTintBtn,
+        _mapTintColorInput: this._mapTintColorInput,
+        _mapTintSlider: this._mapTintSlider,
+        _mapTintSliderValue: this._mapTintSliderValue,
+        _mapTintSliderRow: this._mapTintSliderRow,
         _sliderContainer: this._sliderContainer,
         _sliderPanel: this._sliderPanel,
         _styleIndicator: this._styleIndicator,
@@ -486,6 +491,7 @@ export class StyleManager extends ShellFacade {
     this._initBloomSharpen();
     this._displayBindings = new DisplayBindings({
       viewer,
+      mapStackController: this.mapStackController,
       services: {
         cycleDetectionMode: services.cycleDetectionMode,
         setScopeMaskEnabled: services.setScopeMaskEnabled,
@@ -498,6 +504,9 @@ export class StyleManager extends ShellFacade {
         _bloomSlider: this._bloomSlider,
         _sharpenBtn: this._sharpenBtn,
         _sharpenSlider: this._sharpenSlider,
+        _mapTintBtn: this._mapTintBtn,
+        _mapTintColorInput: this._mapTintColorInput,
+        _mapTintSlider: this._mapTintSlider,
         _scopeBtn: this._scopeBtn,
         _scopeFeatherSlider: this._scopeFeatherSlider,
         _hudLayoutSelect: this._hudLayoutSelect,
@@ -532,6 +541,9 @@ export class StyleManager extends ShellFacade {
         _setSharpenEnabled: (...args) => this._setSharpenEnabled(...args),
         _applySharpenIntensity: (...args) =>
           this._applySharpenIntensity(...args),
+        _setMapTintEnabled: (...args) => this._setMapTintEnabled(...args),
+        _setMapTintColor: (...args) => this._setMapTintColor(...args),
+        _setMapTintStrength: (...args) => this._setMapTintStrength(...args),
         _setHudVariant: (...args) => this._setHudVariant(...args),
         _setCyberSonarEnabled: (...args) => this._setCyberSonarEnabled(...args),
         _setCyberSonarSetting: (...args) => this._setCyberSonarSetting(...args),
@@ -552,6 +564,7 @@ export class StyleManager extends ShellFacade {
         hud: this.hud,
         bloomEnabled: this.bloomEnabled,
         sharpenEnabled: this.sharpenEnabled,
+        mapTintEnabled: this.mapTintEnabled,
         celestialRing: this.celestialRing,
         celestialRingEnabled: this.celestialRingEnabled,
         _models3dEnabled: this._models3dEnabled,

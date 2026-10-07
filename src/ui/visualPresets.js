@@ -144,6 +144,30 @@ export const SHARPEN_SHADER = /* glsl */ `
   }
 `;
 
+/** Default colour (CSS hex) for the map tint overlay, matching the picker markup. */
+export const MAP_TINT_COLOR_DEFAULT = '#4a90d9';
+/** Default map-tint strength as a percentage (0-100), matching the slider markup. */
+export const MAP_TINT_STRENGTH_DEFAULT = 50;
+
+/**
+ * GLSL fragment shader that tints the rendered scene with a colour. The tint is
+ * a multiply blend between the scene colour and `tintColor`, crossfaded from the
+ * untouched image by `strength`, so 0 leaves the map untouched and 1 applies the
+ * full colour filter. Alpha is preserved so it composites like the other stages.
+ */
+export const MAP_TINT_SHADER = /* glsl */ `
+  uniform sampler2D colorTexture;
+  uniform vec4 tintColor;
+  uniform float strength;
+  in vec2 v_textureCoordinates;
+
+  void main() {
+    vec4 color = texture(colorTexture, v_textureCoordinates);
+    vec3 tint = mix(vec3(1.0), tintColor.rgb, clamp(strength, 0.0, 1.0));
+    out_FragColor = vec4(color.rgb * tint, color.a);
+  }
+`;
+
 /** Stable display labels for the active style and inherited Cockpit vision. */
 export const STYLE_STATUS_LABELS = {
   normal: 'NORMAL',

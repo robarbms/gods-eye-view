@@ -24,14 +24,17 @@ export function bindDisplayControls({ elements, actions }) {
     ['sonarButton', 'toggleSonar'],
     ['detectionButton', 'cycleDetection'],
     ['modelsButton', 'toggleModels'],
+    ['mapTintButton', 'toggleMapTint'],
   ])
     listen(elements[name], 'click', action);
   for (const [name, action] of [
     ['bloomSlider', 'setBloomIntensity'],
     ['sharpenSlider', 'setSharpenIntensity'],
     ['scopeFeatherSlider', 'setScopeFeather'],
+    ['mapTintSlider', 'setMapTintStrength'],
   ])
     listen(elements[name], 'input', action, integer);
+  listen(elements.mapTintColor, 'input', 'setMapTintColor', (el) => el.value);
   listen(elements.densitySlider, 'input', 'setDensity', (el) => el.value);
   listen(elements.hudLayout, 'change', 'setHudLayout', (el) => el.value);
   for (const [name, action] of [
@@ -44,6 +47,18 @@ export function bindDisplayControls({ elements, actions }) {
     listen(elements[name], 'input', action, integer);
   for (const el of elements.styleButtons || [])
     listen(el, 'click', 'setStyle', (el) => el.dataset.style);
+  for (const el of elements.osmStyleButtons || [])
+    listen(el, 'click', 'setOsmStyle', (el) => el.dataset.osmStyle);
+  // `input` only previews the swatch while dragging; `change` (picker committed)
+  // rebuilds the map tiles once.
+  listen(
+    elements.osmMonoColor,
+    'input',
+    'previewOsmMonoColor',
+    (el) => el.value,
+  );
+  listen(elements.osmMonoColor, 'change', 'setOsmMonoColor', (el) => el.value);
+  listen(elements.osmVariant, 'change', 'setOsmVariant', (el) => el.value);
   for (const el of elements.allocationButtons || [])
     listen(el, 'click', 'setAllocation', (el) => el.dataset.allocation);
   for (const el of elements.modelModeButtons || [])

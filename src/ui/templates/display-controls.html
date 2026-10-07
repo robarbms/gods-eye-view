@@ -153,6 +153,42 @@
         <span class="pp-label">Celestial</span>
       </button>
     </div>
+    <div class="pp-toggle-group" id="osm-style-group">
+      <div class="pp-slider-row visible osm-style-row">
+        <span class="pp-slider-mini-label" id="osm-style-label">OSM Map Style</span>
+        <div class="osm-style-swatches" role="radiogroup" aria-labelledby="osm-style-label">
+          <button class="osm-style-btn active" data-osm-style="default" role="radio" aria-checked="true" title="Default raster OSM tiles">
+            <span class="osm-style-dot" aria-hidden="true"></span><span class="osm-style-name">Default</span>
+          </button>
+          <button class="osm-style-btn" data-osm-style="positron" role="radio" aria-checked="false" title="Positron — light OpenMapTiles style">
+            <span class="osm-style-dot" aria-hidden="true"></span><span class="osm-style-name">Positron</span>
+          </button>
+          <button class="osm-style-btn" data-osm-style="dark" role="radio" aria-checked="false" title="Dark — dark OpenMapTiles style">
+            <span class="osm-style-dot" aria-hidden="true"></span><span class="osm-style-name">Dark</span>
+          </button>
+          <button class="osm-style-btn" data-osm-style="fiord" role="radio" aria-checked="false" title="Fiord — slate OpenMapTiles style">
+            <span class="osm-style-dot" aria-hidden="true"></span><span class="osm-style-name">Fiord</span>
+          </button>
+          <button class="osm-style-btn" data-osm-style="mono" role="radio" aria-checked="false" title="Mono — monochrome map in the picked colour">
+            <span class="osm-style-dot" aria-hidden="true"></span><span class="osm-style-name">Mono</span>
+          </button>
+          <label class="osm-mono-picker" title="Pick the Mono map colour">
+            <span class="osm-style-name">Colour</span>
+            <input type="color" class="pp-color-input" id="osm-mono-color" value="#3cff7a" aria-label="Mono map colour" />
+          </label>
+        </div>
+      </div>
+      <div class="pp-slider-row visible osm-variant-row">
+        <label class="pp-slider-mini-label" for="osm-style-variant">Variant</label>
+        <select id="osm-style-variant" class="pp-select" aria-label="OSM map style variant" disabled title="Pick a vector style (not Default) to use a variant">
+          <option value="normal">None</option>
+          <option value="outline">Outline</option>
+          <option value="outline-light">Outline light</option>
+          <option value="outline-inverted">Outline inverted</option>
+          <option value="outline-light-inverted">Outline light inverted</option>
+        </select>
+      </div>
+    </div>
     <button class="pp-toggle-btn" id="clean-view-toggle" title="Hide UI chrome">
       <span class="pp-icon">&#x25A1;</span>
       <span class="pp-label">Clean UI</span>
@@ -175,6 +211,21 @@
       <div class="pp-slider-row" id="sharpen-slider-row">
         <input type="range" class="pp-slider" id="sharpen-intensity-slider" min="0" max="100" value="49" aria-label="Sharpen intensity" />
         <span class="pp-slider-value" id="sharpen-intensity-value">49%</span>
+      </div>
+    </div>
+    <div class="pp-toggle-group">
+      <button class="pp-toggle-btn" id="map-tint-toggle" title="Tint the map with a colour" aria-pressed="false">
+        <span class="pp-icon material-symbols-outlined" aria-hidden="true">palette</span>
+        <span class="pp-label">Tint</span>
+      </button>
+      <div class="pp-slider-row visible map-tint-color-row">
+        <label class="pp-slider-mini-label" for="map-tint-color">Colour</label>
+        <input type="color" class="pp-color-input" id="map-tint-color" value="#4a90d9" aria-label="Map tint colour" />
+      </div>
+      <div class="pp-slider-row" id="map-tint-slider-row">
+        <label class="pp-slider-mini-label" for="map-tint-strength-slider">Strength</label>
+        <input type="range" class="pp-slider" id="map-tint-strength-slider" min="0" max="100" value="50" aria-label="Map tint strength" />
+        <span class="pp-slider-value" id="map-tint-strength-value">50%</span>
       </div>
     </div>
   </div>

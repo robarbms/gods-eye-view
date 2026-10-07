@@ -1271,11 +1271,16 @@
       "src/maps/registry.js",
       "src/maps/terrain.js",
       "src/maps/terrainRetry.js",
+      "src/maps/osmVectorStyle.js",
       "src/keySetupCore.mjs",
       "src/localRequestGate.mjs",
-      "src/maps/imageryHost.js"
+      "src/maps/imageryHost.js",
+      "src/sources/vectorTiles.js",
+      "src/sources/httpBody.js",
+      "src/sources/phaseTiming.js",
+      "src/data/tomtomTiles.js"
     ],
-    "external": ["cesium"]
+    "external": ["cesium", "@mapbox/vector-tile", "pbf"]
   },
   "voice-connection": {
     "exports": [
@@ -1759,6 +1764,7 @@
       "src/maps/registry.js",
       "src/maps/terrain.js",
       "src/maps/terrainRetry.js",
+      "src/maps/osmVectorStyle.js",
       "src/navigationPolicy.js",
       "src/orbit.js",
       "src/overlays/worldOverlay.js",

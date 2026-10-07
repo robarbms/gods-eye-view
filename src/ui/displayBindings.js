@@ -12,10 +12,11 @@ export class DisplayBindings {
     operations,
     readState,
     claimDetection,
+    mapStackController,
   }) {
     Object.assign(
       this,
-      { viewer, services, readState, claimDetection },
+      { viewer, services, readState, claimDetection, mapStackController },
       elements,
       operations,
     );
@@ -31,6 +32,9 @@ export class DisplayBindings {
   }
   get sharpenEnabled() {
     return this.readState().sharpenEnabled;
+  }
+  get mapTintEnabled() {
+    return this.readState().mapTintEnabled;
   }
   get celestialRing() {
     return this.readState().celestialRing;
@@ -100,6 +104,9 @@ export class DisplayBindings {
         bloomSlider: this._bloomSlider,
         sharpenButton: this._sharpenBtn,
         sharpenSlider: this._sharpenSlider,
+        mapTintButton: this._mapTintBtn,
+        mapTintColor: this._mapTintColorInput,
+        mapTintSlider: this._mapTintSlider,
         scopeButton: this._scopeBtn,
         scopeFeatherSlider: this._scopeFeatherSlider,
         hudLayout: this._hudLayoutSelect,
@@ -119,6 +126,9 @@ export class DisplayBindings {
         celestialButton: this._celestialBtn,
         modelsButton: this._models3dBtn,
         modelModeButtons: this._models3dBtn ? this._models3dModeBtns : [],
+        osmStyleButtons: document.querySelectorAll('.osm-style-btn'),
+        osmMonoColor: document.getElementById('osm-mono-color'),
+        osmVariant: document.getElementById('osm-style-variant'),
       },
       actions: {
         setStyle: (style) => this.setStyle(style, { userInitiated: true }),
@@ -216,8 +226,53 @@ export class DisplayBindings {
           this._syncModels3dModeRow();
         },
         setModelsMode: (mode) => this._setModels3dMode(mode),
+        setOsmStyle: (style) => this._setOsmStyle(style),
+        setOsmVariant: (variant) => {
+          this.shareLinkManager?.claimRestoreLane?.('visual');
+          const applied =
+            this.mapStackController?.setOsmVariant?.(variant) || variant;
+          const select = document.getElementById('osm-style-variant');
+          if (select) select.value = applied;
+        },
+        previewOsmMonoColor: (color) => this._previewOsmMonoColor(color),
+        setOsmMonoColor: (color) => {
+          const applied =
+            this.mapStackController?.setOsmMonoColor?.(color) || color;
+          this._previewOsmMonoColor(applied);
+          this._setOsmStyle('mono');
+        },
+        toggleMapTint: () => {
+          this.shareLinkManager?.claimRestoreLane?.('visual');
+          this._setMapTintEnabled(!this.mapTintEnabled);
+        },
+        setMapTintColor: (value) => {
+          this.shareLinkManager?.claimRestoreLane?.('visual');
+          this._setMapTintColor(value);
+        },
+        setMapTintStrength: (value) => {
+          this.shareLinkManager?.claimRestoreLane?.('visual');
+          this._setMapTintStrength(value);
+        },
       },
     });
+  }
+  /** Show a Mono colour on its swatch dot without rebuilding map tiles. */
+  _previewOsmMonoColor(color) {
+    for (const group of document.querySelectorAll('.osm-style-swatches'))
+      group.style.setProperty('--osm-mono-color', color);
+  }
+  /** Swap the OSM basemap style and light the chosen swatch. */
+  _setOsmStyle(style) {
+    this.shareLinkManager?.claimRestoreLane?.('visual');
+    const applied = this.mapStackController?.setOsmStyle?.(style) || style;
+    for (const btn of document.querySelectorAll('.osm-style-btn')) {
+      const active = btn.dataset.osmStyle === applied;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', String(active));
+    }
+    // Variants only exist for the vector styles, not the raster Default.
+    const variantSelect = document.getElementById('osm-style-variant');
+    if (variantSelect) variantSelect.disabled = applied === 'default';
   }
   destroy() {
     this._applicationShortcuts?.destroy();
