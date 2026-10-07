@@ -203,3 +203,32 @@ test('polygon-selected tiles keep nearest-first order and cached revisits issue 
     'over-budget selection is rejected before fetching',
   );
 });
+
+test('fetchTile resolves relative templates against the allowed origin and caches decoded tiles', async () => {
+  const urls = [];
+  let decoded = 0;
+  const source = createVectorTileSource({
+    ...options,
+    tileJsonUrl: 'https://tiles.example/index.json',
+    decode: () => ({ id: ++decoded }),
+    fetchImpl: async (url) => {
+      urls.push(url);
+      return url.endsWith('/index.json')
+        ? Response.json({ tiles: ['x/{z}/{x}/{y}.pbf'] })
+        : new Response(new Uint8Array([1]));
+    },
+  });
+  const first = await source.fetchTile(3, 1, 2);
+  const cached = await source.fetchTile(3, 1, 2);
+  assert.deepEqual(first, { id: 1 });
+  assert.equal(cached, first);
+  assert.deepEqual(urls, [
+    'https://tiles.example/index.json',
+    'https://tiles.example/x/3/1/2.pbf',
+  ]);
+  await assert.rejects(source.fetchTile(3, 8, 0), {
+    name: 'TypeError',
+    message: 'Invalid vector tile coordinates',
+  });
+  source.clear();
+});

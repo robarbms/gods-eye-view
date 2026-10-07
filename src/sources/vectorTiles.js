@@ -129,7 +129,10 @@ export function createVectorTileSource({
           let parsed;
           try {
             parsed = new URL(
-              url.replace('{z}', '0').replace('{x}', '0').replace('{y}', '0'),
+              url
+                .replaceAll('{z}', '__gev_z__')
+                .replaceAll('{x}', '__gev_x__')
+                .replaceAll('{y}', '__gev_y__'),
               allowedOrigin,
             );
           } catch {
@@ -137,6 +140,10 @@ export function createVectorTileSource({
               retryable: false,
             });
           }
+          const resolvedTemplate = parsed.href
+            .replaceAll('__gev_z__', '{z}')
+            .replaceAll('__gev_x__', '{x}')
+            .replaceAll('__gev_y__', '{y}');
           if (
             parsed.origin !== allowedOrigin ||
             parsed.username ||
@@ -149,7 +156,7 @@ export function createVectorTileSource({
             phaseTiming('tilejson-fetch', metadataStart, {
               source: allowedOrigin,
             });
-          metadata = { ...value, template: url };
+          metadata = { ...value, template: resolvedTemplate };
           return metadata;
         })
         .catch((error) => {
@@ -306,6 +313,28 @@ export function createVectorTileSource({
 
   return {
     getMetadata,
+    async fetchTile(z, x, y, { signal } = {}) {
+      if (
+        !Number.isInteger(z) ||
+        z < 0 ||
+        z > 30 ||
+        !Number.isInteger(x) ||
+        !Number.isInteger(y) ||
+        x < 0 ||
+        y < 0 ||
+        x >= 2 ** z ||
+        y >= 2 ** z
+      )
+        throw new TypeError('Invalid vector tile coordinates');
+      signal?.throwIfAborted();
+      const epoch = generation;
+      const meta = await getMetadata(signal);
+      const value = await getTile({ z, x, y }, meta, signal, epoch);
+      signal?.throwIfAborted();
+      if (epoch !== generation)
+        throw new DOMException('Source cleared', 'AbortError');
+      return value;
+    },
     async fetchBounds(
       box,
       { zoom, signal, onTile, tiles: selectedTiles } = {},

@@ -214,6 +214,74 @@ test('requestImage degrades to a flat land tile when the tile fetch fails', asyn
   assert.deepEqual(painted.rect, [0, 0, 256, 256]);
 });
 
+test('requestImage uses capped absolute tile requests and provider destruction aborts them', async () => {
+  let tileSignal, tileUrl, cancelled = 0;
+  const provider = createOsmVectorStyleImagery({
+    styleId: 'fiord',
+    cesium: {
+      WebMercatorTilingScheme: class {
+        constructor() {
+          this.rectangle = {};
+        }
+      },
+      Credit: class {},
+      Event: class {},
+    },
+    createCanvas: () => ({
+      getContext: () => ({ fillRect() {} }),
+    }),
+    fetchImpl: async (url, { signal }) => {
+      if (url.endsWith('/planet'))
+        return Response.json({ tiles: ['x/{z}/{x}/{y}.pbf'] });
+      tileUrl = url;
+      tileSignal = signal;
+      return new Response(
+        new ReadableStream({
+          cancel() {
+            cancelled++;
+          },
+        }),
+        { headers: { 'content-length': String(4 * 1024 * 1024 + 1) } },
+      );
+    },
+    tileJsonUrl: 'https://tiles.openfreemap.org/planet',
+  });
+  await provider.requestImage(1, 2, 3);
+  assert.equal(tileUrl, 'https://tiles.openfreemap.org/x/3/1/2.pbf');
+  assert.equal(tileSignal.aborted, true);
+  assert.equal(cancelled, 1);
+
+  let pendingSignal;
+  const pending = createOsmVectorStyleImagery({
+    styleId: 'fiord',
+    cesium: {
+      WebMercatorTilingScheme: class {
+        constructor() {
+          this.rectangle = {};
+        }
+      },
+      Credit: class {},
+      Event: class {},
+    },
+    createCanvas: () => ({ getContext: () => ({ fillRect() {} }) }),
+    fetchImpl: async (url, { signal }) => {
+      if (url.endsWith('/planet'))
+        return Response.json({ tiles: ['https://tiles.openfreemap.org/{z}/{x}/{y}.pbf'] });
+      pendingSignal = signal;
+      return new Promise((resolve, reject) =>
+        signal.addEventListener('abort', () => reject(signal.reason), {
+          once: true,
+        }),
+      );
+    },
+  });
+  const request = pending.requestImage(1, 2, 3);
+  while (!pendingSignal) await new Promise((resolve) => setTimeout(resolve, 0));
+  pending.destroy();
+  await request;
+  assert.equal(pendingSignal.aborted, true);
+});
+
 test('style variants list None then the four outline variants', () => {
   assert.equal(DEFAULT_OSM_STYLE_VARIANT, 'normal');
   assert.deepEqual(

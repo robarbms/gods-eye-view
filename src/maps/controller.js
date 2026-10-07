@@ -141,8 +141,11 @@ export class MapSourceController {
     const next = normalizeOsmMonoColor(color);
     if (!next || next === this._osmMonoColor) return this._osmMonoColor;
     this._osmMonoColor = next;
-    for (const key of this._osmStyleProviders.keys())
-      if (key.startsWith('mono|')) this._osmStyleProviders.delete(key);
+    for (const [key, provider] of this._osmStyleProviders)
+      if (key.startsWith('mono|')) {
+        this._osmStyleProviders.delete(key);
+        this._dispose(provider);
+      }
     if (
       this._osmStyleId === 'mono' &&
       this._activeId === 'osm' &&
@@ -369,7 +372,10 @@ export class MapSourceController {
     // layer (and its loaded tiles) when the resolved provider is unchanged;
     // rebuilding it exposes the bare globe while imagery loads again.
     if (!this._imageryLayer || this._activeImageryProvider !== provider) {
+      const previousProvider = this._activeImageryProvider;
       this._removeImageryLayer();
+      if (previousProvider !== provider)
+        this._disposeOsmStyleProvider(previousProvider);
       this._imageryLayer = this._createImageryLayer(provider);
       this._activeImageryProvider = provider;
       this.viewer.imageryLayers.add(this._imageryLayer, 0);
@@ -494,6 +500,14 @@ export class MapSourceController {
     if (typeof value.destroy === 'function' && !value.isDestroyed?.())
       value.destroy();
   }
+  _disposeOsmStyleProvider(provider) {
+    for (const [key, cached] of this._osmStyleProviders)
+      if (cached === provider) {
+        this._osmStyleProviders.delete(key);
+        this._dispose(provider);
+        return;
+      }
+  }
   destroy() {
     if (this._destroyed) return;
     this._destroyed = true;
@@ -503,6 +517,8 @@ export class MapSourceController {
     this._isSwitching = false;
     this._removeImageryLayer();
     this._credits.destroy();
+    for (const provider of this._osmStyleProviders.values())
+      this._dispose(provider);
     for (const promise of this._imageryProviders.values())
       void Promise.resolve(promise).then(
         (value) => this._dispose(value.provider),

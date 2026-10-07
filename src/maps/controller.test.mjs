@@ -340,6 +340,27 @@ test('OSM basemap style swaps the OSM imagery provider and leaves other stacks u
   env.controller.destroy();
 });
 
+test('replaced and destroyed OSM style providers are disposed', async () => {
+  const destroyed = [];
+  const env = publicFixture({
+    createOsmStyleProvider: (styleId) => ({
+      id: `osm-style:${styleId}`,
+      errorEvent: event(),
+      destroy() {
+        destroyed.push(this.id);
+      },
+    }),
+  });
+  await env.controller.setStack('osm');
+  env.controller.setOsmStyle('positron');
+  await settle();
+  env.controller.setOsmStyle('dark');
+  await settle();
+  assert.deepEqual(destroyed, ['osm-style:positron']);
+  env.controller.destroy();
+  assert.deepEqual(destroyed, ['osm-style:positron', 'osm-style:dark']);
+});
+
 test('mono OSM style rebuilds its provider when the picked colour changes', async () => {
   const env = publicFixture({
     createOsmStyleProvider: (styleId, { color } = {}) => ({

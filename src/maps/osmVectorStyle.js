@@ -1,6 +1,7 @@
 import * as CesiumNS from 'cesium';
 import { PbfReader } from 'pbf';
 import { VectorTile } from '@mapbox/vector-tile';
+import { createVectorTileSource } from '../sources/vectorTiles.js';
 
 /**
  * Client-side OpenMapTiles basemap styles for the OSM globe stack. Each style
@@ -555,41 +556,6 @@ export function drawOsmVectorTile(
 }
 
 /**
- * Lazily resolve the current OpenFreeMap tile URL template. The planet TileJSON
- * carries a dated path, so the template cannot be hard-coded; it is fetched once
- * and memoised, and the resolved origin is pinned to OpenFreeMap.
- */
-function createTemplateResolver(fetchImpl, tileJsonUrl) {
-  let pending = null;
-  return () => {
-    if (pending) return pending;
-    pending = (async () => {
-      const response = await fetchImpl(tileJsonUrl, { redirect: 'error' });
-      if (!response.ok)
-        throw new Error(`TileJSON unavailable (HTTP ${response.status})`);
-      const json = await response.json();
-      const url = json?.tiles?.[0];
-      if (
-        typeof url !== 'string' ||
-        !['{z}', '{x}', '{y}'].every((token) => url.includes(token))
-      )
-        throw new Error('Invalid OpenFreeMap TileJSON');
-      const probe = new URL(
-        url.replace('{z}', '0').replace('{x}', '0').replace('{y}', '0'),
-        OPENFREEMAP_ORIGIN,
-      );
-      if (probe.origin !== OPENFREEMAP_ORIGIN)
-        throw new Error('Invalid OpenFreeMap tile origin');
-      return url;
-    })().catch((error) => {
-      pending = null;
-      throw error;
-    });
-    return pending;
-  };
-}
-
-/**
  * Build a Cesium-compatible imagery provider that renders an OpenMapTiles vector
  * style to raster tiles. Mirrors the duck-typed provider shape used elsewhere in
  * the app (see `src/layers/weather/rasterTiles.js`); tiles are fetched lazily by
@@ -622,7 +588,13 @@ export function createOsmVectorStyleImagery({
     throw new Error(`No vector palette for OSM style: ${String(styleId)}`);
   const groundColor = resolveOsmVariantPaint(palette, variantId).palette.land;
   const tilingScheme = new cesium.WebMercatorTilingScheme();
-  const resolveTemplate = createTemplateResolver(fetchImpl, tileJsonUrl);
+  const lifetime = new AbortController();
+  const tileSource = createVectorTileSource({
+    tileJsonUrl,
+    allowedOrigin: OPENFREEMAP_ORIGIN,
+    decode: (bytes) => new VectorTile(new PbfReader(bytes)),
+    fetchImpl,
+  });
   return {
     tilingScheme,
     rectangle: tilingScheme.rectangle,
@@ -638,6 +610,10 @@ export function createOsmVectorStyleImagery({
     hasAlphaChannel: false,
     getTileCredits: () => undefined,
     pickFeatures: () => undefined,
+    destroy() {
+      lifetime.abort();
+      tileSource.clear();
+    },
     async requestImage(x, y, level) {
       const canvas = createCanvas();
       canvas.width = tileSize;
@@ -646,18 +622,9 @@ export function createOsmVectorStyleImagery({
       ctx.fillStyle = groundColor;
       ctx.fillRect(0, 0, tileSize, tileSize);
       try {
-        const template = await resolveTemplate();
-        const url = new URL(
-          template
-            .replace('{z}', String(level))
-            .replace('{x}', String(x))
-            .replace('{y}', String(y)),
-          OPENFREEMAP_ORIGIN,
-        ).href;
-        const response = await fetchImpl(url, { redirect: 'error' });
-        if (!response.ok) return canvas;
-        const bytes = new Uint8Array(await response.arrayBuffer());
-        const tile = new VectorTile(new PbfReader(bytes));
+        const tile = await tileSource.fetchTile(level, x, y, {
+          signal: lifetime.signal,
+        });
         drawOsmVectorTile(ctx, tile, {
           palette,
           tileSize,
