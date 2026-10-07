@@ -647,10 +647,13 @@ export function createOsmVectorStyleImagery({
       ctx.fillRect(0, 0, tileSize, tileSize);
       try {
         const template = await resolveTemplate();
-        const url = template
-          .replace('{z}', String(level))
-          .replace('{x}', String(x))
-          .replace('{y}', String(y));
+        const url = new URL(
+          template
+            .replace('{z}', String(level))
+            .replace('{x}', String(x))
+            .replace('{y}', String(y)),
+          OPENFREEMAP_ORIGIN,
+        ).href;
         const response = await fetchImpl(url, { redirect: 'error' });
         if (!response.ok) return canvas;
         const bytes = new Uint8Array(await response.arrayBuffer());
