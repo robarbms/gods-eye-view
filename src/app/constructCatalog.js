@@ -19,6 +19,7 @@ import { createApplicationInstallations } from './layers/militaryInstallations.j
 import { createApplicationSatellites } from './layers/satellites.js';
 import { createApplicationLaunches } from './layers/rocketLaunches.js';
 import { createApplicationAlpr } from './layers/alprCameras.js';
+import { createApplicationWsdotCameras } from './layers/wsdotCameras.js';
 import { createApplicationLocalAdsb } from './layers/localAdsb.js';
 import { createApplicationAwareness } from './layers/militaryAwareness.js';
 import { createApplicationFirms } from './layers/firms.js';
@@ -55,14 +56,18 @@ const SOURCE_METHODS = Object.freeze({
   earthquakes: ['getSnapshot'],
   'fire-perimeters': ['getSnapshot'],
   cables: ['fetch'],
+  wsdotCameras: ['getSnapshot'],
 });
 
 /**
- * Hardware-local layers are registered like any other but never enter share
- * links or stored layer state: another browser cannot have this receiver.
+ * Layers registered like any other but never serialized into share links or
+ * stored layer state. Some are hardware-local (another browser cannot have this
+ * receiver); others simply opt out of persistence rather than claim a
+ * share-link token.
  */
 export const LOCAL_ONLY_LAYER_METADATA = Object.freeze([
   Object.freeze({ id: 'local-adsb', disposition: 'local-only' }),
+  Object.freeze({ id: 'wsdot-cameras', disposition: 'local-only' }),
 ]);
 
 /** Serialization metadata for every layer the application catalog constructs. */
@@ -148,6 +153,7 @@ export function createApplicationCatalog({
           source: sources['fire-perimeters'],
         }),
         createApplicationAlpr({ surface, source: sources.alpr }),
+        createApplicationWsdotCameras({ source: sources.wsdotCameras }),
         satellites,
         createApplicationLaunches({ source: sources.launches, satellites }),
         createApplicationTraffic({ source: sources.traffic, surface }),

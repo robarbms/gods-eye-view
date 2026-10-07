@@ -95,6 +95,98 @@ test('destroy invalidates image callbacks and releases each subscription once', 
   assert.equal(requests.length, 1);
 });
 
+test('an external snapshot borrows the CCTV palette until a live camera reclaims it', (t) => {
+  const prior = globalThis.Image;
+  const requests = [];
+  globalThis.Image = class {
+    constructor() {
+      requests.push(this);
+    }
+  };
+  t.after(() => {
+    globalThis.Image = prior;
+  });
+  const meta = element();
+  const badge = element();
+  let collapsed = null;
+  const controls = new CctvControls({
+    elements: {
+      _cctvFrame: element(),
+      _cctvFrameWrap: element(),
+      _cctvMeta: meta,
+      _cctvSourceBadge: badge,
+    },
+    cctv: {},
+    actions: {
+      isEnabled: () => true,
+      setPanelCollapsed: (id, c) => {
+        collapsed = { id, c };
+      },
+    },
+  });
+  t.after(() => controls.destroy());
+
+  controls._showExternalFrame({
+    imageUrl: 'cam.jpg',
+    title: 'I-5 @ NE 45th',
+    road: '5',
+    id: '42',
+    source: 'WSDOT',
+  });
+  assert.deepEqual(collapsed, { id: 'cctv-panel', c: false });
+  assert.equal(requests.length, 1);
+  requests[0].onload();
+  assert.equal(controls._cctvFrame.src, 'cam.jpg');
+  assert.equal(meta.textContent, 'I-5 @ NE 45th · SR 5');
+  assert.equal(badge.textContent, 'WSDOT · LIVE');
+
+  // A render with no active CCTV camera must not clear the borrowed snapshot.
+  controls._renderCctvState({ enabled: false, cameras: [] });
+  assert.notEqual(controls._externalFrame, null);
+  assert.equal(controls._cctvFrame.src, 'cam.jpg');
+
+  // A live CCTV camera reclaims the palette.
+  controls._renderCctvState({
+    enabled: true,
+    activeCameraId: 'c1',
+    activeCamera: { id: 'c1', frameUrl: 'live.jpg' },
+  });
+  assert.equal(controls._externalFrame, null);
+});
+
+test('an external snapshot stands down the auto-selected CCTV camera so it owns the palette', (t) => {
+  const prior = globalThis.Image;
+  globalThis.Image = class {};
+  t.after(() => {
+    globalThis.Image = prior;
+  });
+  let deactivated = 0;
+  const controls = new CctvControls({
+    elements: {
+      _cctvFrame: element(),
+      _cctvFrameWrap: element(),
+      _cctvMeta: element(),
+      _cctvSourceBadge: element(),
+    },
+    cctv: {
+      deactivateActiveCamera: () => {
+        deactivated++;
+        return true;
+      },
+    },
+    actions: { isEnabled: () => true, setPanelCollapsed: () => {} },
+  });
+  t.after(() => controls.destroy());
+
+  controls._showExternalFrame({
+    imageUrl: 'cam.jpg',
+    title: 'I-90 @ MP 10',
+    source: 'WSDOT',
+  });
+  assert.equal(deactivated, 1);
+  assert.notEqual(controls._externalFrame, null);
+});
+
 function calibrationFixture(t) {
   const { controls } = fixture(t);
   const prior = globalThis.document;

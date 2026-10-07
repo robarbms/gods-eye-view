@@ -22,6 +22,28 @@ export function createLifecycle({
   const { onFocusTargetAppear } = services.focus;
   const { releaseContinuousRender } = services.render;
 
+  // The CCTV layer ("Cameras") owns the WSDOT highway-cameras layer: there is
+  // no standalone WSDOT toggle, so enabling/disabling Cameras cascades to it.
+  const WSDOT_CAMERAS_LAYER_ID = 'wsdot-cameras';
+
+  /**
+   * Cascades the CCTV enabled state to the owned WSDOT cameras layer. Fire and
+   * forget: WSDOT serializes its own lifecycle, and a slow or unavailable feed
+   * (or an unknown-layer/teardown race) must never block or break the CCTV
+   * transition.
+   */
+  function cascadeWsdotCameras(enabled) {
+    const manager = layerState._dataManager;
+    if (typeof manager?.setEnabled !== 'function') return;
+    try {
+      Promise.resolve(
+        manager.setEnabled(WSDOT_CAMERAS_LAYER_ID, enabled),
+      ).catch(() => {});
+    } catch {
+      // Synchronous rejection — ignore, as above.
+    }
+  }
+
   /** Resets all module-scoped runtime state to initial values. */
 
   function clearRuntimeState() {
@@ -46,6 +68,18 @@ export function createLifecycle({
     layerState._lastAppliedRegime = null;
   }
   const methods = {
+    /**
+     * Stores the application DataLayerManager so this layer can own the WSDOT
+     * highway-cameras layer's enablement (cascaded from enable()/disable()).
+     * @param {Object} dataManager - The DataLayerManager.
+     */
+    attachDataManager(dataManager) {
+      layerState._dataManager = dataManager || null;
+      // If Cameras is already on when the manager attaches (e.g. restored
+      // enabled before wiring), bring the owned WSDOT layer up to match.
+      if (layerState._enabled) cascadeWsdotCameras(true);
+    },
+
     /**
      * Initializes the CCTV layer: loads camera sources, builds the catalog,
      * restores calibration from localStorage, creates billboards, sets up click
@@ -339,6 +373,7 @@ export function createLifecycle({
      */
     enable() {
       layerState._enabled = true;
+      cascadeWsdotCameras(true);
       if (
         layerState._records.some(
           (record) => record.camera.cityId === 'warendorf',
@@ -393,6 +428,7 @@ export function createLifecycle({
     disable() {
       services.credits?.hideOsmCredit?.(layerState._viewer, 'cctv');
       layerState._enabled = false;
+      cascadeWsdotCameras(false);
       unregisterPickOwner('cctv');
       // ADJUST mode does not survive a layer toggle — predictable re-entry.
       layerState._calibrationMode = false;
@@ -468,6 +504,7 @@ export function createLifecycle({
       layerState._viewer = null;
       layerState._enabled = false;
       layerState._activeCameraId = null;
+      layerState._dataManager = null;
       layerState._autoHopSuspended = false;
       // Clear existing subscribers rather than replacing the Set —
       // replacing would silently orphan any unsubscribe() closures

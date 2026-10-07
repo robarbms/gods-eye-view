@@ -3,6 +3,8 @@ import {
   _queueCctvFrame,
   _settleCctvFrame,
   _syncCctvSourceBadge,
+  _showExternalFrame,
+  _renderExternalFrame,
 } from './cctvFrames.js';
 import {
   _activeCctvCameraId,
@@ -35,9 +37,17 @@ export class CctvControls {
     this._cctvChipWasBusy = false;
     this._cctvFrameRequestToken = 0;
     this._cctvFramePreloader = null;
+    this._externalFrame = null;
     this._calibrationEdit = null;
     this._actionGeneration = 0;
     this._initCctvPanel();
+    // A clicked external camera (e.g. WSDOT traffic cameras) hands its snapshot
+    // to this panel's frame preview through the application window event bus.
+    if (typeof window !== 'undefined') {
+      this.listen(window, 'gev:cctv-external-frame', (event) =>
+        this._showExternalFrame(event?.detail),
+      );
+    }
     if (this._cctvVideo && typeof MutationObserver !== 'undefined') {
       this._videoVisibilityObserver = new MutationObserver(() =>
         this._renderCctvState(this._cctvState),
@@ -81,6 +91,12 @@ export class CctvControls {
   }
   _syncCctvSourceBadge(...args) {
     return _syncCctvSourceBadge.call(this, ...args);
+  }
+  _showExternalFrame(...args) {
+    return _showExternalFrame.call(this, ...args);
+  }
+  _renderExternalFrame(...args) {
+    return _renderExternalFrame.call(this, ...args);
   }
   _activeCctvCameraId(...args) {
     return _activeCctvCameraId.call(this, ...args);
