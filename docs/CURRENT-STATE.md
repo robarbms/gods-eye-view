@@ -1,5 +1,88 @@
 # God's Eye View Current State
 
+## Shared selection reticle
+
+`installSelectionReticle` (`src/overlays/selectionReticle.js`, installed in
+`createApplicationScene`) draws one animated HUD reticle on whatever the
+operator clicks on the map, for every layer, when the Display panel's HUD
+Target is Lock (`documentElement.dataset.hudTarget === 'lock'`; Default, the
+starting mode, shows no shared reticle and switching back clears it). It has a
+ring, three ticks crossing it (one turn per 14 s), a counter-rotating dotted
+orbit (28 s), a 36-segment `--accent` ring outside them that turns
+counter-clockwise with the orbit, a disc with
+a radar sweep, a blinking core and dashed arrows with small heads closing in
+from both sides. Each new lock replays a ~2 s intro (`is-entering`): the disc
+flickers at 1.7x scale and shrinks onto the subject by 720 ms, the ring draws
+in `--accent` and heats to red, the core and arrows appear, and one tick at the
+top splits into three, 120° apart, before the ticks start to turn. It
+does not rely on layers reporting selection: its own LEFT_CLICK handler (gated by
+`isPointerFree`) runs `scene.pick` and `resolvePickTarget` follows a live
+`Entity` position, a point/billboard `position` or a standalone `Model`
+translation. Empty space, 3D tiles and positionless geometry (ground polylines)
+clear it. Each `postRender` re-projects the target into the
+`#selection-reticle-root` DOM layer (z-index 5, under the label/card canvas)
+and squashes it by the camera pitch so it lies on the ground. The reticle drops
+itself when its object is hidden, removed or destroyed (unless
+`findHandoffTarget` finds `viewer.trackedEntity` or `viewer.selectedEntity`
+within 2 km of its last position, as when Live Flights hides the clicked
+billboard and tracks a new entity, in which case it carries the lock over
+without replaying the intro), behind the horizon or
+off screen, and on a deliberate `gev:entity-selection-cleared` /
+`gev:awareness-subject-cleared` from the layer that announced the selection.
+The animation is CSS only (`foundation.css`, disabled under
+`prefers-reduced-motion`), so it never holds the render governor continuous.
+Selection started away from the map (for example the Contacts panel) is not shown.
+Its colours come from `--accent` (disc, sweep, ring draw-in) and a fixed lock red
+`--reticle-red` (`#ff3355`, set on `#selection-reticle-root`) for the ring,
+ticks, core and arrows, mixed with `color-mix`. It does not use
+`--secondary-accent`.
+
+## HUD appearance controls
+
+`bindHudAppearanceControls` (`src/ui/hudAppearance.js`, bound by
+`displayBindings`) drives the Display panel's HUD section: the Target segment
+(`default` / `lock`, dispatching `gev:hud-target-changed`), and Primary and
+Secondary colour pickers. Primary writes `--accent` (plus derived
+`--accent-dim` / `--accent-glow`) inline on the root element and follows the
+UI theme's accent until the operator changes it. Secondary writes
+`--secondary-accent` (default `#ffd38a` in `foundation.css`). The Target sound
+select (`none`, `hud-lock` (default) or `sci-fi-click`) sets
+`data-hud-lock-sound`. The settings last for the session only.
+
+Each time the reticle locks onto a new subject (not a repeat click on the same
+one) it dispatches `gev:hud-target-locked`. `installLockSound`
+(`src/overlays/lockSound.js`, installed in `createApplicationScene`) preloads
+the clips in `LOCK_SOUND_FILES` (`public/sounds/hud-lock.wav`, Kenney CC0, and
+`public/sounds/sci-fi-click.wav`, Pixabay Content License; see
+`public/sounds/README.md`) and plays the selected one at 45% volume on that
+event; `none` is silent. The clip is restarted on a quick retarget, any other
+clip is stopped, and autoplay refusals or a missing file are ignored.
+
+## Metro stations from Wikidata
+
+`createMetroLayer` (`src/layers/metro/`, id `metro`, share-link token `0`) sits
+in the Movement group after Transit. It loads stations in two steps from the Wikidata
+Query Service, directly from the browser. On a settled camera move (900 ms
+debounce) it takes the view rectangle, clipped to 1.5° around the view
+centre and refused above 200 km, and snaps it to a 0.25° grid. Then it asks for up to six
+Q515 cities with population ≥ 50,000 inside it (`wikibase:box`). For cities
+without cached stations it asks for Q928830 stations whose P131 chain reaches
+the city within four hops, three cities per request, with line labels and
+P465 colours; P576/P3999 closed stations are excluded. The source
+(`createMetroSource`) bounds each answer to 8 MiB, times out at 25 s (cities) and
+55 s (stations), and keeps LRU caches of 64 boxes and 24 cities for 12 hours.
+Unbounded `P131*` walks from the city side time out on WDQS for large cities,
+which is why the walk is bounded and forward-geared. Up to 4,000 stations are
+drawn as point primitives (`metro:<QID>` pick ids). The same query also
+returns each station's P197 adjacent stations with their P81 line qualifiers;
+`buildLineSegments` turns them into one segment per station pair and line, using
+the line's P465 colour. Links to stations that are not loaded, or longer than 15 km,
+are skipped. Up to 6,000 segments are drawn as one batched
+`GroundPolylinePrimitive` (2.5 px at 60% opacity, `ClassificationType.BOTH`,
+`metro:line:<id>` ids), rebuilt only when the set of segments changes. Names for the 120 stations
+nearest the camera within 7 km, plus the selected station, go to the world-overlay host as
+source `metro`.
+
 ## God's Eye View in conversations — October 2, 2026
 
 Tool answers that can be shown in God's Eye View include a view: camera, layers,
