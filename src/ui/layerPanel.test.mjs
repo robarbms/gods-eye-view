@@ -25,7 +25,6 @@ test('panel presentation places Transit between Street Traffic and Bike Share in
       'ais-live-vessels',
       'traffic',
       'transit',
-      'metro',
       'bikeshare',
     ],
   );

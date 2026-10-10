@@ -27,7 +27,6 @@ const PANEL_GROUPS = [
       'ais-live-vessels',
       'traffic',
       'transit',
-      'metro',
       'bikeshare',
     ],
   },
@@ -73,7 +72,6 @@ const PANEL_POSITIONS = new Map(
 const PANEL_LABELS = {
   'ais-live-vessels': 'Live Vessels',
   bikeshare: 'Bike Share',
-  metro: 'Metro',
   cctv: 'Cameras',
   'alpr-cameras': 'Mapped ALPR Cameras',
   'local-datacenters': 'Data Centers',

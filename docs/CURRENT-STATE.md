@@ -60,8 +60,16 @@ clip is stopped, and autoplay refusals or a missing file are ignored.
 
 ## Metro stations from Wikidata
 
-`createMetroLayer` (`src/layers/metro/`, id `metro`, share-link token `0`) sits
-in the Movement group after Transit. It loads stations in two steps from the Wikidata
+`createMetroLayer` (`src/layers/metro/`) has no palette row or share-link token
+of its own: `withMetroStations` (`src/app/layers/transitWithMetro.js`) folds it
+into the Transit catalog entry, so the Transit toggle (and Transit in share
+links) enables, updates and disables both. Metro's first fetch rides on the
+manager's update after enable; afterwards it reloads on camera moves, not on
+Transit's poll. The Transit row shows Metro's line legend, station chips and
+`mergeTransitMetroStats` counts (`N vehicles · N stations · N cities`); when
+no GTFS-RT feed covers the view, Metro's status replaces Transit's zoom-in
+prompt. Internal ids (`metro` sprite collection, pick owner and overlay source)
+are unchanged. It loads stations in two steps from the Wikidata
 Query Service, directly from the browser. On a settled camera move (900 ms
 debounce) it takes the view rectangle, clipped to 1.5° around the view
 centre and refused above 200 km, and snaps it to a 0.25° grid. Then it asks for up to six

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Wikidata metro stations are now part of **Transit** instead of a separate
+  Metro toggle: turning Transit on shows both live vehicles and metro stations,
+  and turning it off hides both. The Transit row shows the station and city
+  count, the line legend and the selected station's Wikidata link, and where no
+  live feed covers the view it reports stations instead of asking you to zoom
+  in. The provisional Metro share-link token `0` is withdrawn before release.
 - The HUD **Lock** target now plays a sound each time it locks onto a new
   subject. A **Target sound** option in the Display panel's HUD section picks
   None, **HUD lock** (the default, a rising tone from Kenney's CC0 "Interface
@@ -34,8 +40,7 @@
   Animation is skipped when reduced motion is requested.
 - Metro track lines are thinner and semi-transparent, and stops have a fine
   black outline with a soft glow in their line colour.
-- Add a **Metro** layer (Movement group in Data Layers, share-link token `0`)
-  that shows metro stations from Wikidata for the cities in view. After the
+- Add a **Metro** layer (Movement group in Data Layers) that shows metro stations from Wikidata for the cities in view. After the
   camera settles the layer asks the Wikidata Query Service for the most
   populous cities (Q515, population ≥ 50,000) inside the view, then asks for
   metro stations (Q928830) located in each city, coloured by their line's
