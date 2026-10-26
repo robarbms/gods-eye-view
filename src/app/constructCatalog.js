@@ -165,7 +165,6 @@ export function createApplicationCatalog({
         createApplicationGnssIntegrity({
           source: sources['gnss-integrity'],
         }),
-         createApplicationAlpr({ surface, source: sources.alpr }),
         createApplicationWsdotCameras({ source: sources.wsdotCameras }),
    
         createApplicationAlpr({ surface, source: sources.alpr }),
