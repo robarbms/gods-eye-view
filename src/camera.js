@@ -1,13 +1,13 @@
 import * as Cesium from 'cesium';
 
 /**
- * Set camera to Austin on load with a cinematic fly-in.
+ * Set camera to Seattle on load with a cinematic fly-in.
  * @returns {Function} Cancels the pending or active startup flight.
  */
-export function flyToAustin(viewer) {
+export function flyToSeattle(viewer) {
   // Start from a high altitude, then fly down
   viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(-97.7431, 30.2672, 25000),
+    destination: Cesium.Cartesian3.fromDegrees(-122.34, 47.59, 25000),
     orientation: {
       heading: Cesium.Math.toRadians(0),
       pitch: Cesium.Math.toRadians(-90),
@@ -19,9 +19,9 @@ export function flyToAustin(viewer) {
   const timer = setTimeout(() => {
     if (viewer.isDestroyed()) return;
     viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(-97.7431, 30.2672, 600),
+      destination: Cesium.Cartesian3.fromDegrees(-122.34, 47.59, 1500),
       orientation: {
-        heading: Cesium.Math.toRadians(15),
+        heading: Cesium.Math.toRadians(0),
         pitch: Cesium.Math.toRadians(-30),
         roll: 0.0,
       },
