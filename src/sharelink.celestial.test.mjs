@@ -2,12 +2,10 @@ import { DisplayBindings } from './ui/displayBindings.js';
 import { LocationNavigation } from './ui/locationNavigation.js';
 import { VisualSettings } from './ui/visualSettings.js';
 import { readShellSource, shellMethod } from './testSupport/readShellSource.mjs';
-import { StyleManager } from './ui/applicationShell.js';
 import { _claimContextVisualAuthority, setContextMode } from './ui/contextActions.js';
 import { _initGlobalContextPanel } from './ui/contextBindings.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import { ShareLinkManager, decodeShareCreatedAtMs } from './sharelink.js';
 import { createDefaultLayerState } from './data/layerState.js';
 
@@ -181,6 +179,24 @@ test('a collapsed Recent Imagery panel survives the share-link round trip beside
   assert.deepEqual(older.panelState, { specs: [
     { id: 'cctv-panel', collapsed: true, pinned: null },
     { id: 'global-context-panel', collapsed: false, pinned: null },
+  ] });
+});
+
+test('a collapsed Street Level panel survives the share-link round trip', () => {
+  const manager = makeManager();
+  manager.setPanelStateProvider(() => ({ specs: [
+    { id: 'cctv-panel', collapsed: false },
+    { id: 'street-level-panel', collapsed: true },
+  ] }));
+  clearTimeout(manager._debounceTimer);
+  manager._updateHash();
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  assert.equal(params.get('ui'), 'v.c.0_t.c.1');
+  const restored = makeManager(`#v=2&lat=10&lon=20&ui=${params.get('ui')}`)
+    .parseInitialHash();
+  assert.deepEqual(restored.panelState, { specs: [
+    { id: 'cctv-panel', collapsed: false, pinned: null },
+    { id: 'street-level-panel', collapsed: true, pinned: null },
   ] });
 });
 
@@ -759,4 +775,21 @@ test('visual input listeners are revoked before asynchronous UI teardown', () =>
   assert.match(DisplayBindings.prototype.destroy.toString(), /this\._applicationShortcuts\?\.destroy\(\)/);
   assert.match(VisualSettings.prototype.stop.toString(), /this\._styleParameters\?\.destroy\(\)/);
   assert.match(VisualSettings.prototype.stop.toString(), /this\._visualEffects\.stop\(\)/);
+});
+
+
+test('share restore rejects inherited styles while continuing later fields', () => {
+  for (const style of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'unknown']) {
+    const restored = makeManager(`#lat=10&lon=20&style=${style}&cr=1`).parseInitialHash();
+    assert.equal(restored.style, 'normal');
+    assert.equal(restored.celestialRing, true);
+  }
+});
+
+test('programmatic invalid styles are ignored before changing visual state', () => {
+  const target = { activeStyle: 'normal' };
+  for (const value of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'unknown', {}, null, () => {}]) {
+    assert.doesNotThrow(() => VisualSettings.prototype.setStyle.call(target, value));
+    assert.equal(target.activeStyle, 'normal');
+  }
 });

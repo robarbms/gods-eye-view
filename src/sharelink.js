@@ -34,6 +34,7 @@ const SHARE_PANEL_STATE_REGISTRY = Object.freeze([
   { id: 'data-panel', token: 'd', pinnable: false },
   { id: 'cctv-panel', token: 'v', pinnable: false },
   { id: 'recent-imagery-panel', token: 'i', pinnable: false },
+  { id: 'street-level-panel', token: 't', pinnable: false },
   { id: 'radio-panel', token: 'r', pinnable: false },
   { id: 'scene-panel', token: 's', pinnable: false },
   { id: 'global-context-panel', token: 'g', pinnable: false },
@@ -174,7 +175,9 @@ export class ShareLinkManager {
       parseOr(params.get('dd'), 50),
       50,
     );
-    const style = URL_TO_STYLE[params.get('style')] || 'normal';
+    const style = Object.hasOwn(URL_TO_STYLE, params.get('style'))
+      ? URL_TO_STYLE[params.get('style')]
+      : 'normal';
     const decodedLayerState = decodeLayerStateParams(params);
     const state = {
       lat,
@@ -510,6 +513,8 @@ export class ShareLinkManager {
     if (!params) return false;
     params.set(SHARE_CREATED_AT_PARAM, String(Math.floor(nowMs / 1000)));
     const copiedUrl = new URL(window.location.href);
+    // ?lang is the sender's language override; the recipient keeps their own.
+    copiedUrl.searchParams.delete('lang');
     copiedUrl.hash = params.toString();
     try {
       await navigator.clipboard.writeText(copiedUrl.href);

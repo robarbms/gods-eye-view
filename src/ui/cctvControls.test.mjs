@@ -197,6 +197,9 @@ function calibrationFixture(t) {
       Object.assign(input, {
         focus() {},
         select() {},
+        setAttribute(name, value) {
+          this[name] = value;
+        },
         remove() {
           this.parent.input = null;
         },

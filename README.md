@@ -73,7 +73,7 @@ Start with the included data sources, then add your own. Each layer is a separat
 - **🔭 Satellite passes:** Ask by voice when any loaded satellite next rises over you: rise, peak and set times, and whether you can see it.
 - **🔎 Analyst answers:** Count, filter and rank satellites, datacenters and dams by voice, alongside flights, ships, fires and quakes; answers say when a feed is stale or on a fallback.
 - **🧭 Tilt and North Up:** Switch between straight-down and a 35° oblique, or put north at the top, while a tracked target stays centered.
-- **🔍 Keyless search:** Type coordinates or a bundled city or landmark to fly there with no network request; other names use Google when configured, then Photon and Nominatim.
+- **🔍 Keyless search:** Type decimal coordinates, a two-dimensional WGS84 `geo:` URI (for example, `geo:39.7392,-104.9903`), or a bundled city or landmark to fly there with no geocoder request; other names use Google when configured, then Photon and Nominatim.
 - **📦 Shareable scenes:** Import, preview and share Director scenes as files or bundles, with camera anchors, authored moves and data packs.
 - **🌊 Nepal flood scene:** Replay the Bhote Koshi flood: flood path, witness sources and before-and-after imagery (bundled data is non-commercial; see [DATA_SOURCES.md](DATA_SOURCES.md)).
 
@@ -117,6 +117,14 @@ locked dependencies, finds a free local port, and opens the app.
 Version 8.2 fixes the launcher installation issue;
 [details from the Pinokio maintainer](https://pinokio.co/posts/01m1m4p9xxm3qw7dnnpj2wr93g).
 
+**Pinokio opens but the globe is very choppy?** Before treating that as a GPU
+compatibility or minimum-hardware problem, copy the local server URL shown by
+Pinokio and open the same URL in your normal hardware-accelerated browser. One
+Pinokio 8.2.0 user reported severe stutter in Pinokio's embedded view that went
+away when the same running server was opened in an external browser ([#365](https://github.com/bilawalsidhu/gods-eye-view/issues/365)).
+That points to the embedded browser rather than the app server or your
+hardware; it does not establish a minimum GPU requirement.
+
 ### Path 2 — Terminal / coding agent
 
 Use **Node.js 24.x (24.14.0 or later) or 26.x**. The setup doctor warns about
@@ -144,6 +152,84 @@ See [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 **macOS shortcut:** `./scripts/dev-fresh.sh` clears the Vite cache and pulls any
 configured keys straight from the Keychain. It starts keyless too.
+
+### Path 3 — Docker
+
+No Node install needed; the container publishes the same dev server.
+
+```bash
+git clone https://github.com/bilawalsidhu/gods-eye-view.git
+cd gods-eye-view
+docker compose up
+```
+
+Open **`http://localhost:4173`** as above. Everything the app saves stays in the folder you cloned, so `docker compose down` never loses anything:
+
+- `.env` - your API keys, whether saved from Provider Settings or typed in by hand
+- `.gev-cache/` - downloaded map and satellite data, so later starts are faster
+- `.gev-logs/` - logs
+
+Back up that folder and you've backed up everything; delete `.env` to forget your keys. Source edits still hot-reload. The port is published to `127.0.0.1` only, so the default matches the native one.
+
+The local MCP server and ChatGPT OAuth voice are not available under Docker; use an OpenAI API key for voice.
+
+Publishing it wider is the [Sharing an instance](#-sharing-an-instance) opt-in, and it hands out **Provider Settings** too: the launcher trusts the container gateway as this machine, and a wider publish delivers everyone else from that same address. For an instance you mean to share, put the keys in `.env` by hand instead. [SECURITY.md](SECURITY.md) has the detail.
+
+When you widen the publish, also set `GEV_KEY_SETUP_TRUSTED_PEERS=none` so the launcher trusts no gateway address.
+
+```bash
+GEV_KEY_SETUP_TRUSTED_PEERS=none docker compose up
+```
+
+Compose forwards `GEV_KEY_SETUP_TRUSTED_PEERS` and `GEV_ALLOWED_HOSTS` from your
+shell or the project's `.env`; an exported shell value takes precedence. You can
+also put `GEV_KEY_SETUP_TRUSTED_PEERS=none` in `.env` for a persistent setting.
+Unset or blank trusted peers retain automatic gateway discovery; `none` explicitly
+disables it. The startup log confirms that no additional peers are trusted.
+
+<details>
+<summary>Running on Linux, a NAS, or behind a reverse proxy</summary>
+
+Run it as the user who should own the files it writes. `id` shows the numbers; for yourself on Linux:
+
+```bash
+env UID=$(id -u) GID=$(id -g) docker compose up
+```
+
+On a NAS, clone onto the share you want the data on and use the share owner's ids:
+
+```bash
+cd /volume1/docker
+git clone https://github.com/bilawalsidhu/gods-eye-view.git
+cd gods-eye-view
+env UID=1026 GID=100 docker compose up -d
+```
+
+Keep the `env`: bash treats `UID` as read-only, so a plain `UID=1026` in front of a command is silently ignored. If the container can't write the checkout, it says so at start. Docker Desktop on macOS and Windows maps ownership for you.
+
+On SELinux hosts (Fedora, RHEL), compose mounts the checkout with `:z` so the container may read it; Docker may relabel the checkout for container access, which can take a moment on a large checkout. Without that, the start fails with `Cannot find module '/app/scripts/docker-start.mjs'`.
+
+Behind a reverse proxy, put your keys in `.env` or pass them as environment variables - Provider Settings refuses proxied requests on purpose - and add the hostname you serve it on, for example `GEV_ALLOWED_HOSTS=globe.example.lan` (see [Sharing an instance](#-sharing-an-instance)).
+
+</details>
+
+<details>
+<summary>IPv6-only networks, rebuilding, and the test suites</summary>
+
+The launcher reads the IPv4 default gateway, so an IPv6-only Docker network
+finds none: it logs `No default gateway; Provider Settings stays loopback-only`
+and the panel refuses every save. Put your keys in `.env` by hand there, or name
+the gateway yourself with `GEV_KEY_SETUP_TRUSTED_PEERS` after reading
+[SECURITY.md](SECURITY.md).
+
+`node_modules` deliberately stays inside the image, so it survives in an
+anonymous volume across restarts: after a `git pull` that changes dependencies,
+recreate it with `docker compose down -v && docker compose up --build`. The
+image also skips Puppeteer's Chromium download, which keeps it small but leaves
+`npm run test:track` to the host — `npm run build` and `npm test` run fine in
+the container.
+
+</details>
 
 ### Then power it up — in the app, not in a file
 
@@ -235,7 +321,17 @@ _Why cockpit mode exists: you're riding a real aircraft over real terrain — an
 
 ## 🎙️ Talk to It
 
-> Voice needs an **OpenAI key**. Without one the entire app still runs — the mic button just reports voice is unavailable. The same key drives the **AI HUD summary**: a terse, five-word intelligence-style readout of the current view that regenerates as you move.
+The standalone app offers **OpenAI** and **Gemini** in the GEV MIC provider chooser. OpenAI is the initial default; your choice is saved in this browser. To use Gemini, add `GEMINI_API_KEY` in Provider Settings or your local `.env` file, then select Gemini. `GEMINI_LIVE_MODEL` defaults to `gemini-3.8-live`. The permanent key stays on the local server, which issues a constrained, single-use session credential.
+
+Changing provider ends the current conversation. If voice is on, the new provider starts with the same open-mic or push-to-talk mode; a held Space key is not carried over. Gemini uses the same map actions and captions, but has no OpenAI cost meter or MINI tier. When Gemini reports that its session has expired, start voice again for a new conversation. The provider chooser does not change the OpenAI-backed AI HUD summary.
+
+> Voice can use an **OpenAI API key** or, on the same machine, an opt-in signed-in **ChatGPT/Codex OAuth** session. The API-key path remains the default. Selecting ChatGPT OAuth in Provider Settings reuses an existing local sign-in or starts the Codex browser sign-in flow and selects OAuth when it completes. The OpenAI key still drives the **AI HUD summary**: a terse, five-word intelligence-style readout of the current view that regenerates as you move.
+
+The OAuth option is experimental. OpenAI documents ChatGPT plan usage for the [Responses API](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference); a supported third-party Realtime contract for reusing Codex tokens has not been confirmed. A successful token mint does not establish billing or support terms.
+
+GEV reads Codex's file credentials but does not write or refresh them. It checks token shape and expiry, and reports expired sign-in as requiring re-authentication. The login button runs `codex login`, permits one pending attempt, and reports exit failures or a two-minute timeout. `CODEX_HOME` must match the directory that Codex uses. If `CODEX_AUTH_JSON` points elsewhere, sign in separately or fix that mismatch before using the button. Codex credential storage must use `auth.json`; Keychain-only and in-memory storage are not readable by GEV. On Windows, the login button may not be able to start an npm-installed Codex; run `codex login` yourself, then select OAuth. See [Codex credential storage](https://learn.chatgpt.com/docs/auth#credential-storage).
+
+For a live voice check, run `node scripts/qa-voice-auth.mjs http://127.0.0.1:4189 oauth microphone.wav` against your local dev server. Use a WAV with three seconds of leading silence followed by a short spoken reply request. Replace `oauth` with `api-key` to check the API-key path. The check verifies audio input, a completed spoken reply, usage, resource cleanup, and reconnect. It saves screenshots and credential-free results under `.gev-logs/voice-auth/`.
 
 Click **GEV MIC**, grant the microphone, and just talk. This is more than a voice-controlled remote:
 
@@ -243,11 +339,15 @@ Click **GEV MIC**, grant the microphone, and just talk. This is more than a voic
 - **🎯 Entity Q&A.** Click any plane, ship, or datacenter and ask _"what's this?"_ It answers using the object's live telemetry.
 - **👁️ Visual grounding.** At street level, it reads a viewport screenshot to identify legible signage and building names, and is instructed never to hallucinate labels.
 - **🎬 Cinematic framing.** _"Show me the planes overhead"_ pulls the camera back, angles it, and frames the live traffic like a director.
-- **🔒 Honest and secure.** The agent only confirms actions that succeeded. Your `OPENAI_API_KEY` never touches the browser; the client only gets a short-lived session token.
+- **🔒 Honest and secure.** The agent only confirms actions that succeeded. Your `OPENAI_API_KEY` never touches the browser; the client only gets a short-lived session token. If you choose **USE CHATGPT OAUTH** in Provider Settings, the local server uses that sign-in only to mint the same kind of short-lived Realtime credential, and refuses the OAuth path for non-loopback clients.
 
-Twenty-nine tools, four jobs — the commands below come straight from the product's voice test suite and tool playbook:
+Thirty tools, four jobs — the commands below come straight from the product's voice test suite and tool playbook:
 
 **🎥 Direct it** — drone-operator camera verbs:
+
+“Rotate the globe” spins Earth to the right continuously; ask for left, a speed,
+or stop. If it refuses, follow its reset-and-rotate or further-zoom guidance;
+camera input stops rotation.
 
 > 🗣️ _"Take me to Tokyo."_ · _"Orbit around this area slowly."_ · _"Draw the walking route from the Capitol to Zilker Park."_ → _"Fly the route we just drew."_ · _"Zoom out to a globe view."_
 
@@ -283,6 +383,7 @@ _Ask for radio near anywhere and the globe starts broadcasting — every station
 
 ## 🛰️ What's on the Globe
 
+Twenty layers and map sources. **Eighteen have a keyless path.** Some offer additional capabilities with a provider key. (🟢 no key · 🟡 free key · 🔴 metered.)
 Twenty layers and map sources. **Eighteen have a keyless path.** Some offer additional capabilities with a provider key. (🟢 no key · 🟡 free key · 🔴 metered.)
 
 | Layer                       | What you get                                                                                                                                                                                                                                                                                                                                                                                                                                   | Source                                  | Auth                                                                                                |
@@ -331,6 +432,16 @@ _The Space Missions layer replaying a Falcon 9 ascent — labeled `RECONSTRUCTED
 **Missing a layer you want?** Open an issue — or add it and send the PR.
 
 ---
+
+## 📷 Street Level
+
+> Street-level photos from any provider in one panel. This build ships **Mapillary** (a free client token), **Google Street View** (your Google Maps key), **KartaView** and **Panoramax** (no key).
+
+**Setup.** At [mapillary.com/dashboard/developers](https://www.mapillary.com/dashboard/developers), register an application with **Read** access and copy its **Client Token** (`MLY|…`). Paste it into **POWER UP → Mapillary**, or set `MAPILLARY_CLIENT_TOKEN` in `.env` and restart. Without it the panel reads **KEY REQUIRED**. **Google Street View** uses `GOOGLE_MAPS_API_KEY` with the **Maps JavaScript API** enabled for it in Google Cloud; its chip starts off, since every panorama is billed to the key. **KartaView** and **Panoramax** need nothing: their public APIs are keyless.
+
+**Use.** Turn on **Street Level** under DATA LAYERS → Cameras, or with the pill in the STREET LEVEL panel header. Each provider has a chip in its own colour (Mapillary green), and one is lit at a time: lighting one switches the others off. Mapillary, which is free, is lit by default. Zoom in to street level (below 60 km) for the coverage lines; from orbit the panel says to zoom in. The **IMAGERY** (ALL / 360° / FLAT) and **SINCE** filters apply to Mapillary, KartaView and Panoramax; Street View panoramas are all 360°, so with Street View lit the filters are hidden. Click a coverage line for its image cones and a cone to open the photo. Light **KARTAVIEW** (purple) and zoom in below about 6 km: its lines are the streets KartaView has photos of, and a click on one opens the photo nearest the click, flat or 360° (drag to look around), with cones along its drive; **‹ ›** or ← → step through the drive (Shift+← →, ↑ ↓ and + − look around a 360° photo; pinch zooms on a phone). Photos KartaView has archived are skipped, and where all are archived the panel says so. For KartaView, **SINCE** goes by upload date, as KartaView's own map does (it can filter by nothing else), and the panel notes it beside the SINCE value (ANY DATE (by upload date)); KartaView filters its lines on its own server, and a filtered area KartaView has not drawn before can take several seconds. Light **PANORAMAX** (orange) for the open, federated commons (strongest in France and Belgium): below about 60 km its lines are sequences. A click on a line opens that sequence's picture nearest the click without moving the camera, flat or 360°, with cones along the sequence around it; **‹ ›** or ← → step through it, and both filters apply. Its caption names the picture's authors (or the instance holding it) and licence (mostly CC BY-SA 4.0; pictures on the IGN instance are Licence Ouverte 2.0). On the **Google 3D** map (Google's terms keep Street View off other maps, where it does not appear), light **GOOGLE STREET VIEW** and click a street from below 3 km, or press **OPEN STREET VIEW** for the view centre, to open Google's panorama there; step along its arrows. Above the photo: **EXPAND** (full screen; Esc leaves) and **FIT / FILL** (Mapillary, and flat KartaView and Panoramax photos). The caption links to the image on the provider's site, and the globe credits each provider that is on ("© Mapillary contributors, CC BY-SA 4.0", "Street View imagery © Google", "© KartaView contributors, CC BY-SA 4.0", "© Panoramax contributors, licence per picture"). KartaView's own photo pages fail for signed-out visitors, so its link opens the full-size photo.
+
+Share links carry the provider switches and filters (`0.m.0` Mapillary off, `0.m.0_0.r.google-1` Street View on, `0.m.0_0.r.google-0*kartaview-1*panoramax-0` KartaView on and `0.m.0_0.r.google-0*kartaview-0*panoramax-1` Panoramax on, as the app writes them (`0.m.0_0.r.kartaview-1` and `0.m.0_0.r.panoramax-1` work too; a link that leaves out `m` keeps Mapillary, the default, lit), `0.p.p` panoramas only, `0.s.365` the last year). To add a provider, implement the contract in `src/layers/streetLevel/registry.js` and register it in `src/app/layers/streetLevel.js`.
 
 ## 🎖️ Field Missions
 
@@ -381,11 +492,11 @@ How the globe handles live data:
 ```
 src/
 ├── main.js                 # Bootstrap: Google 3D tiles, layer registration
-├── ui.js                   # Runtime UI — panels, HUD, styles, control facade
+├── ui/                     # Runtime UI — panels, HUD, styles, controls
 ├── hud.js                  # Intelligence HUD + AI scene summary
 ├── keySetup.js             # POWER UP panel — in-app provider keys (dev server only)
 ├── mapStackController.js   # Basemap switching — Google 3D / Esri / OSM / ion stacks
-├── voice/                  # OpenAI Realtime session + 29 voice tools
+├── voice/                  # OpenAI Realtime session + 30 voice tools
 ├── layers/                 # Layer components — weather, wind, cyclones, transit, ALPR, …
 ├── data/                   # One module per layer + orchestration + context store
 │   ├── iconOrientation.js  # Screen-projected headings + horizon cull
@@ -413,16 +524,17 @@ names it.
 
 ### Choose the capabilities you want
 
-Six keys. Four have a free tier, and the two 🔴 ones are metered:
+Seven keys. Five have a free tier, and the two 🔴 ones are metered:
 
 |     | Key             | Why                                                                                                                                                                                  | Get it                                                                                                                                                               |
 | --- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 🟡  | **Cesium ion**  | 🗺️ Google Photorealistic 3D, world terrain, and additional ion-hosted imagery stacks. The free Community plan is for eligible individual, personal/non-commercial use and has quotas | [cesium.com/ion](https://cesium.com/ion) — use a public `assets:read` token and check current [pricing/eligibility](https://cesium.com/platform/cesium-ion/pricing/) |
-| 🔴  | **Google Maps** | Direct Google Photorealistic 3D + Google place search ([Map Tiles API](https://developers.google.com/maps/documentation/tile))                                                       | [Google Cloud Console](https://console.cloud.google.com/) — URL-restrict it                                                                                          |
-| 🔴  | **OpenAI**      | 🎙️ The voice experience + AI HUD summary. The mini model works; the standard model is noticeably smarter. Want Gemini or another provider behind the mic? PRs welcome                | [platform.openai.com](https://platform.openai.com) — metered, see costs below                                                                                        |
+| 🔴  | **Google Maps** | Direct Google Photorealistic 3D, Google place search and Street View ([Map Tiles API](https://developers.google.com/maps/documentation/tile); Street View also needs the Maps JavaScript API) | [Google Cloud Console](https://console.cloud.google.com/) — URL-restrict it                                                                                          |
+| 🔴  | **OpenAI**      | 🎙️ Voice + AI HUD summary through an API key. Provider Settings also offers **USE CHATGPT OAUTH** for cloud voice without removing the API-key option                              | [platform.openai.com](https://platform.openai.com) — API-key usage is metered, see costs below                                                                       |
 | 🟡  | **AISStream**   | 🚢 Live global ships                                                                                                                                                                 | [aisstream.io](https://aisstream.io) — free signup                                                                                                                   |
 | 🟡  | **NASA FIRMS**  | 🔥 Live active fires                                                                                                                                                                 | [firms.modaps.eosdis.nasa.gov](https://firms.modaps.eosdis.nasa.gov/api/map_key/) — free                                                                             |
 | 🟡  | **TomTom**      | 🚦 Live flow speeds and congestion colors for the simulated traffic layer                                                                                                            | [my.tomtom.com](https://my.tomtom.com/keys) — free tier available                                                                                                    |
+| 🟡  | **Mapillary**   | 📷 Street Level coverage and photos. A public client token by design (see SECURITY.md)                                                                                               | [mapillary.com/dashboard/developers](https://www.mapillary.com/dashboard/developers) — register an app, copy its Client Token                                        |
 | 🟡  | **WSDOT**       | 📹 Live Washington State highway traffic cameras, folded into the Cameras layer                                                                                                      | [wsdot.wa.gov/traffic/api](https://wsdot.wa.gov/traffic/api/) — free, email signup                                                                                   |
 
 ![Diving from city-scale live congestion straight into an intersection's public camera](docs/media/05-traffic-to-cctv.gif)
@@ -434,9 +546,11 @@ _What the TomTom key buys you: rush-hour density painted on the city — then di
 |     | Key                  | Why                                                           | Get it                                             |
 | --- | -------------------- | ------------------------------------------------------------- | -------------------------------------------------- |
 | 🟡  | **OpenSky**          | ✈️ More flight-polling credits (🟢 anonymous works without)   | [opensky-network.org](https://opensky-network.org) |
-| 🟡  | **Launch Library 2** | 🚀 Higher space-missions request allowance (🟢 works without) | [thespacedevs.com](https://thespacedevs.com)       |
+| 🔴  | **Launch Library 2** | 🚀 Optional paid token for higher limits (🟢 no key needed for public access) | [thespacedevs.com/supportus](https://thespacedevs.com/supportus) |
 
 Add these if you need higher polling allowances.
+Leave `LL2_API_TOKEN` blank for standard public access. LL2 tokens are optional
+paid Patreon upgrades for higher limits; there is no free API-key signup.
 
 `npm run doctor` reports Node/npm readiness, the primary provider routes, and
 where each configured provider was found without printing credential values.
@@ -498,7 +612,7 @@ Honest numbers, roughly, as of mid-2026 — always check the provider pricing pa
 | **🟢 Most layers**       | **$0, no signup.** OpenSky anon, USGS, CelesTrak, adsb.lol, city CCTV, Radio Browser, GBFS, Launch Library 2, transit feeds, OSRM routing, NOAA and ECMWF weather, OpenStreetMap ALPR mapping, bundled datasets.                                                                                                                                                            |
 | **🟡 The free-key tier** | **$0 with a signup.** AISStream, FIRMS, TomTom, OpenSky, plus Cesium ion for eligible personal/non-commercial use. Provider quotas and eligibility still apply.                                                                                                                                                                                                             |
 | **🗺️ Google 3D tiles**   | **Free through an eligible Cesium ion Community account within its quota; metered through a direct Google key.** Use the direct route for Google place search or commercial deployment, verify current provider terms, and set budget alerts where billing is enabled.                                                                                                      |
-| **🔴 OpenAI voice**      | **The one that costs real money — so the app meters it for you.** Realtime audio runs a few cents per active minute; an evening of heavy use is single-digit dollars. A live session-spend readout sits next to the mic, with an STD/MINI model toggle, a $2 warning, and a **$5 hard cap that ends the session**. The voice context window is kept deliberately short too. |
+| **🔴 OpenAI voice**      | API-key sessions keep the live spend readout, STD/MINI model toggle, $2 warning, and **$5 hard cap**. ChatGPT OAuth is an explicit choice in Provider Settings. Its usage is tracked without an API-dollar estimate or spend cap. The voice context window stays deliberately short. |
 
 Google's direct 3D route is surprisingly generous: the first 1,000 Photorealistic
 3D Tiles sessions each month are currently free, and one root request supports
